@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.23 — built 2026-11-02 16:45 UTC -->
+<!-- Stairways v0.24 — built 2026-11-02 17:19 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.23">
+<meta name="version" content="0.24">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.23';
+const GAME_VERSION = '0.24';
 
 // ---- i18n.js ----
 // ============================================================
@@ -328,7 +328,7 @@ const ROOMS = [
     ],
     stairs: [
       { id: 's1', x: 970, y: 620, len: 420, ang: 200, kind: 'rot', on: true, dir: 1, speed: 28 },
-      { id: 's2', x: 660, y: 330, len: 400, ang: 325, kind: 'rot', on: false, dir: 1, speed: 22 },
+      { id: 's2', x: 700, y: 330, len: 400, ang: 90, kind: 'rot', on: false, dir: 1, speed: 22 },
     ],
     levers: [{ x: 1450, plat: 'pl', actions: [{ stair: 's1', invert: true }, { stair: 's2', invert: true, on: true }] }],
     memory: { id: 'pnt_diary', x: 150, y: 458 },
@@ -614,14 +614,14 @@ const ROOMS = [
     platforms: [
       { id: 'g1', x: 0, y: 480, w: 420, h: 420 },
       { id: 'pc', x: 900, y: 800, w: 200, h: 100 },
-      { id: 'pe', x: 1600, y: 420, w: 400, h: 480 },
+      { id: 'pe', x: 1600, y: 470, w: 400, h: 430 },
     ],
     stairs: [
       { id: 's1', x: 680, y: 520, len: 460, ang: -10, kind: 'weight', rest: -10, min: -35, max: 35 },
       { id: 's2', x: 1300, y: 600, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
     ],
     memory: { id: 'btl_corks', x: 1000, y: 760 },
-    exit: { x: 1945, y: 160, w: 120, h: 270 },
+    exit: { x: 1945, y: 210, w: 120, h: 270 },
   },
   {
     // "The bridge that crumbles": the block is needed on the far side,
@@ -1212,10 +1212,8 @@ function updateOnStair(w, P, move, dt, ev) {
   if (move) ds = P.lockSign * PHYS.STAIR_WALK * dt;
   const lim = st.len / 2 - 10;
   // walking past the end of a stair wraps Hazop around it onto the other face
-  const pushingEnd = move && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0;
-  P.endPush = pushingEnd ? (P.endPush || 0) + dt : 0;
-  if (P.endPush > 0.3) {
-    P.side = -P.side; P.lockSign = -P.lockSign; P.facing = -P.facing; ds = 0; P.endPush = 0;
+  if (move && Math.sign(ds) === Math.sign(P.s) && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0) {
+    P.side = -P.side; P.lockSign = -P.lockSign; P.facing = -P.facing; ds = 0;
     ev.push({ type: 'wrap', x: P.x, y: P.y });
   }
   const ns = clamp(P.s + ds, -lim, lim);
@@ -1978,35 +1976,29 @@ const Audio = (() => {
     land(hard) { noise(0.16, 260, 0.9, hard ? 0.5 : 0.3, 'lowpass', null, true); tone(70, 0.18, hard ? 0.35 : 0.2, 'sine'); },
     lock() { const t = ctx.currentTime; noise(0.3, 220, 1, 0.5, 'lowpass', t + 0.15, true); tone(70, 0.4, 0.3, 'square', t + 0.15); tone(1400, 0.08, 0.05, 'square', t + 0.32); },
     wrap() { const f = noise(0.35, 300, 0.7, 0.14, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.3); tone(220, 0.4, 0.04, 'sine'); },
-    // long rusty metal scrape (stick-slip), once per revolution of a stair
+    // low, dry friction: old metal dragging, close to wind rubbing. Once per revolution.
     scrape(vol, pitch) {
-      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol)), p = pitch || 1, dur = 1.6;
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol)), p = pitch || 1, dur = 2.2;
       const out = ctx.createGain(); out.gain.setValueAtTime(0, t);
-      out.gain.linearRampToValueAtTime(0.32 * v, t + 0.25); out.gain.linearRampToValueAtTime(0.22 * v, t + dur * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      // stick-slip tremolo
-      const trem = ctx.createGain(); trem.gain.value = 0.6;
-      const lfo = ctx.createOscillator(); lfo.frequency.setValueAtTime(14 * p, t); lfo.frequency.linearRampToValueAtTime(22 * p, t + dur);
-      const lg = ctx.createGain(); lg.gain.value = 0.4; lfo.connect(lg); lg.connect(trem.gain);
-      trem.connect(out); out.connect(sfxBus); out.connect(verb);
-      // grinding noise, resonant and sliding
-      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 7;
-      bp.frequency.setValueAtTime(900 * p, t); bp.frequency.linearRampToValueAtTime(1700 * p, t + dur * 0.6); bp.frequency.linearRampToValueAtTime(1100 * p, t + dur);
-      src.connect(bp); bp.connect(trem);
-      // inharmonic squeal partials
-      for (const [f, g] of [[1480, 0.05], [2330, 0.03], [3170, 0.018]]) {
-        const o = ctx.createOscillator(); o.type = 'sawtooth';
-        o.frequency.setValueAtTime(f * p, t); o.frequency.linearRampToValueAtTime(f * p * 1.06, t + dur * 0.5); o.frequency.linearRampToValueAtTime(f * p * 0.97, t + dur);
-        const og = ctx.createGain(); og.gain.value = g; const lp = ctx.createBiquadFilter(); lp.type = 'bandpass'; lp.frequency.value = f * p; lp.Q.value = 12;
-        o.connect(lp); lp.connect(og); og.connect(trem); o.start(t); o.stop(t + dur + 0.05);
-      }
+      out.gain.linearRampToValueAtTime(0.16 * v, t + 0.6); out.gain.linearRampToValueAtTime(0.12 * v, t + dur * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      // slow, irregular roughness (stick-slip) instead of a tone
+      const rough = ctx.createGain(); rough.gain.value = 0.75;
+      const lfo = ctx.createOscillator(); lfo.type = 'triangle'; lfo.frequency.setValueAtTime(7 * p, t); lfo.frequency.linearRampToValueAtTime(10 * p, t + dur);
+      const lg = ctx.createGain(); lg.gain.value = 0.25; lfo.connect(lg); lg.connect(rough.gain);
+      rough.connect(out); out.connect(sfxBus); out.connect(verb);
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.6;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.8;
+      bp.frequency.setValueAtTime(260 * p, t); bp.frequency.linearRampToValueAtTime(420 * p, t + dur * 0.5); bp.frequency.linearRampToValueAtTime(300 * p, t + dur);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+      src.connect(bp); bp.connect(lp); lp.connect(rough);
       lfo.start(t); lfo.stop(t + dur + 0.05); src.start(t, Math.random()); src.stop(t + dur + 0.05);
     },
-    // soft air whoosh when a moving platform sets off
+    // air whoosh when a moving platform sets off (outward or back)
     swoosh(vol) {
       const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
-      const f = noise(0.7, 300, 1.2, 0.22 * v, 'bandpass', t, true);
-      if (f) { f.frequency.setValueAtTime(250, t); f.frequency.exponentialRampToValueAtTime(1400, t + 0.3); f.frequency.exponentialRampToValueAtTime(400, t + 0.65); }
+      const f = noise(0.9, 200, 0.9, 0.5 * v, 'bandpass', t, true);
+      if (f) { f.frequency.setValueAtTime(160, t); f.frequency.exponentialRampToValueAtTime(900, t + 0.35); f.frequency.exponentialRampToValueAtTime(220, t + 0.85); }
+      tone(70, 0.5, 0.12 * v, 'sine', t);
     },
     ratchet(vol, pitch) {
       const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
@@ -2402,7 +2394,7 @@ const Audio = (() => {
         case 'land': Audio.sfx.land(e.hard); puff(P.x, P.y, e.hard ? 10 : 5, 'rgba(70,55,45,.5)', 120, 40); break;
         case 'attach': Audio.sfx.attach(); puff(P.x, P.y, 5, 'rgba(70,55,45,.45)', 90, 30); break;
         case 'lever': Audio.sfx.lever(); puff(e.x, e.y - 20, 8, 'rgba(255,250,220,.9)', 140, 90); break;
-        case 'wrap': Audio.sfx.wrap(); puff(e.x, e.y, 5, 'rgba(255,250,220,.7)', 90, 20); break;
+        case 'wrap': break;
         case 'lock': Audio.sfx.lock(); break;
         case 'tick': Audio.sfx.tick(); break;
         case 'timeup': Audio.sfx.timeup(); puff(e.x, e.y - 20, 6, 'rgba(255,250,220,.7)', 100, 60); break;
