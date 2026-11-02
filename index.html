@@ -226,18 +226,25 @@ const ROOMS = [
     plan: ['L0', 'L1', 'M', 'X'],
   },
   {
+    // "Jump the lever": levers fire when walked over. The middle one breaks the path:
+    // the idea is to jump over it.
     id: 'PNT-T1', ch: 0, w: 2000, h: 900,
-    spawn: { x: 100, y: 700 },
+    spawn: { x: 100, y: 720 },
     platforms: [
-      { id: 'g1', x: 0, y: 700, w: 400, h: 200 },
-      { id: 'p1', x: 860, y: 480, w: 200 },
-      { id: 'g2', x: 1540, y: 720, w: 460, h: 180 },
+      { id: 'i0', x: 0, y: 720, w: 400, h: 180 },
+      { id: 'b1', x: 400, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i1', x: 700, y: 720, w: 300, h: 180 },
+      { id: 'b2', x: 1000, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i2', x: 1300, y: 720, w: 250, h: 180 },
+      { id: 'b3', x: 1550, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i3', x: 1850, y: 720, w: 150, h: 180 },
     ],
-    stairs: [
-      { id: 's1', x: 620, y: 600, len: 440, ang: -25, kind: 'static' },
-      { id: 's2', x: 1300, y: 600, len: 440, ang: 25, kind: 'static' },
+    levers: [
+      { x: 300, plat: 'i0', actions: [{ plat: 'b1', op: 'toggle' }, { plat: 'b2', op: 'toggle' }] },
+      { x: 850, plat: 'i1', actions: [{ plat: 'b2', op: 'toggle' }, { plat: 'b3', op: 'toggle' }] },
+      { x: 1425, plat: 'i2', actions: [{ plat: 'b3', op: 'toggle' }] },
     ],
-    exit: { x: 1945, y: 460, w: 120, h: 260 },
+    exit: { x: 1945, y: 460, w: 120, h: 270 },
   },
   {
     id: 'PNT-2', ch: 0, w: 1600, h: 900,
@@ -396,17 +403,25 @@ const ROOMS = [
     exit: { x: 1945, y: 340, w: 120, h: 270 },
   },
   {
-    id: 'BAL-T2', ch: 1, w: 2000, h: 900,
-    spawn: { x: 100, y: 720 },
+    // "Only once": three rusty one-way levers in a row, two bridges. Order matters, and
+    // so does what you leave untouched: walking over them in line gets it wrong.
+    //   L1: bridge 1 up, bridge 2 down   L2: bridge 2 up   L3: bridge 1 down
+    // Solution: jump L2 and L3, press L1, come back for L2 (jumping L3 again).
+    id: 'BAL-T2', ch: 1, w: 1600, h: 900,
+    spawn: { x: 80, y: 700 },
     platforms: [
-      { id: 'g1', x: 0, y: 720, w: 500, h: 180 },
-      { id: 'pb', x: 520, y: 1100, w: 360, move: { dy: -380, speed: 220 } },
-      { id: 'g2', x: 900, y: 720, w: 200, h: 180 },
-      { id: 'g3', x: 1600, y: 480, w: 400, h: 420 },
+      { id: 'g1', x: 0, y: 700, w: 600, h: 200 },
+      { id: 'b1', x: 600, y: 1100, w: 300, move: { dy: -400, speed: 340 } },
+      { id: 'i1', x: 900, y: 700, w: 200, h: 200 },
+      { id: 'b2', x: 1100, y: 1100, w: 300, move: { dy: -400, speed: 340 } },
+      { id: 'g2', x: 1400, y: 700, w: 200, h: 200 },
     ],
-    stairs: [{ id: 's1', x: 1330, y: 560, len: 440, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30 }],
-    levers: [{ x: 380, plat: 'g1', actions: [{ plat: 'pb', op: 'toggle' }] }],
-    exit: { x: 1945, y: 220, w: 120, h: 270 },
+    levers: [
+      { x: 220, plat: 'g1', type: 'once', actions: [{ plat: 'b2', op: 'on' }] },
+      { x: 340, plat: 'g1', type: 'once', actions: [{ plat: 'b1', op: 'off' }] },
+      { x: 460, plat: 'g1', type: 'once', actions: [{ plat: 'b1', op: 'on' }, { plat: 'b2', op: 'off' }] },
+    ],
+    exit: { x: 1545, y: 440, w: 120, h: 270 },
   },
   {
     id: 'BAL-5', ch: 1, w: 1900, h: 900,
@@ -467,16 +482,18 @@ const ROOMS = [
     plan: ['L1', 'M', 'X'],
   },
   {
-    id: 'JGT-T1', ch: 2, w: 1600, h: 900,
-    spawn: { x: 100, y: 760 },
+    // "The cube": the plate keeps the bridge up only while something presses it.
+    // Hazop cannot hold it and cross at the same time; the toy block can.
+    id: 'JGT-T1', ch: 2, w: 1800, h: 900,
+    spawn: { x: 100, y: 700 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 300, h: 140 },
-      { id: 'pa', x: 350, y: 760, w: 140, move: { mode: 'loop', dy: -200, speed: 90, active: true } },
-      { id: 'pb', x: 600, y: 600, w: 140, move: { mode: 'loop', dy: -200, speed: 90, active: true, u0: 0.5 } },
-      { id: 'pc', x: 850, y: 440, w: 140, move: { mode: 'loop', dy: -200, speed: 90, active: true } },
-      { id: 'g2', x: 1080, y: 300, w: 520 },
+      { id: 'g1', x: 0, y: 700, w: 900, h: 200 },
+      { id: 'br', x: 900, y: 1100, w: 350, move: { dy: -400, speed: 500 } },
+      { id: 'g2', x: 1250, y: 700, w: 550, h: 200 },
     ],
-    exit: { x: 1545, y: 40, w: 120, h: 270 },
+    crates: [{ id: 'c1', x: 320, y: 700 }],
+    plates: [{ x: 720, plat: 'g1', actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 1745, y: 440, w: 120, h: 270 },
   },
   {
     id: 'JGT-3', ch: 2, w: 1600, h: 900,
@@ -511,19 +528,33 @@ const ROOMS = [
     exit: { x: 1945, y: 380, w: 120, h: 270 },
   },
   {
-    id: 'JGT-T2', ch: 2, w: 2000, h: 900,
+    // "The step": the way out is a little too high. The block sits on a shelf:
+    // push it off, then push it against the wall and climb on it.
+    id: 'JGT-T2', ch: 2, w: 1600, h: 900,
     spawn: { x: 100, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 400, h: 140 },
-      { id: 'p1', x: 900, y: 520, w: 200 },
-      { id: 'g2', x: 1620, y: 420, w: 380, h: 480 },
+      { id: 'g1', x: 0, y: 760, w: 1250, h: 140 },
+      { id: 'sh', x: 300, y: 620, w: 220 },
+      { id: 'ge', x: 1250, y: 545, w: 350, h: 355 },
     ],
-    stairs: [
-      { id: 's1', x: 640, y: 600, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1340, y: 460, len: 440, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30 },
+    crates: [{ id: 'c1', x: 440, y: 620 }],
+    exit: { x: 1545, y: 290, w: 120, h: 260 },
+  },
+  {
+    // "The travelling cube": the plate that holds the exit bridge is on an island.
+    // Load the block onto the ferry, travel with it, push it off onto the plate.
+    id: 'JGT-C', ch: 2, w: 2200, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 600, h: 200 },
+      { id: 'fm', x: 620, y: 700, w: 200, move: { mode: 'loop', dx: 560, speed: 110, active: true, pause: 1.6 } },
+      { id: 'i1', x: 1400, y: 700, w: 300, h: 200 },
+      { id: 'br', x: 1700, y: 1100, w: 300, move: { dy: -400, speed: 500 } },
+      { id: 'g2', x: 2000, y: 700, w: 200, h: 200 },
     ],
-    levers: [{ x: 1000, plat: 'p1', actions: [{ stair: 's2', invert: true }] }],
-    exit: { x: 1945, y: 160, w: 120, h: 270 },
+    crates: [{ id: 'c1', x: 420, y: 700 }],
+    plates: [{ x: 1580, plat: 'i1', actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 2145, y: 440, w: 120, h: 270 },
   },
   {
     id: 'JGT-5', ch: 2, w: 2800, h: 900,
@@ -582,18 +613,18 @@ const ROOMS = [
     exit: { x: 1945, y: 160, w: 120, h: 270 },
   },
   {
+    // "The bridge that crumbles": the block is needed on the far side,
+    // but the bridge holds only one crossing. Push the block ahead of you.
     id: 'BTL-T1', ch: 3, w: 2000, h: 900,
-    spawn: { x: 100, y: 600 },
+    spawn: { x: 100, y: 700 },
     platforms: [
-      { id: 'g1', x: 0, y: 600, w: 360, h: 300 },
-      { id: 'pm', x: 860, y: 640, w: 140, move: { mode: 'loop', dx: 260, speed: 110, active: true } },
-      { id: 'g2', x: 1760, y: 640, w: 240, h: 260 },
+      { id: 'g1', x: 0, y: 700, w: 500, h: 200 },
+      { id: 'cb', x: 500, y: 700, w: 500, crumble: true },
+      { id: 'i1', x: 1000, y: 700, w: 500, h: 200 },
+      { id: 'ge', x: 1500, y: 485, w: 500, h: 415 },
     ],
-    stairs: [
-      { id: 's1', x: 600, y: 560, len: 440, ang: 0, kind: 'weight', rest: 0, min: -30, max: 30 },
-      { id: 's2', x: 1500, y: 560, len: 440, ang: 0, kind: 'weight', rest: 0, min: -30, max: 30 },
-    ],
-    exit: { x: 1945, y: 380, w: 120, h: 270 },
+    crates: [{ id: 'c1', x: 300, y: 700 }],
+    exit: { x: 1945, y: 230, w: 120, h: 260 },
   },
   {
     id: 'BTL-3', ch: 3, w: 2400, h: 900,
@@ -633,20 +664,35 @@ const ROOMS = [
     plan: ['L0', 'M', 'X'],
   },
   {
-    id: 'BTL-T2', ch: 3, w: 2400, h: 900,
-    spawn: { x: 100, y: 780 },
+    // "Hourglass": the timed lever raises the bridge for six seconds. The lift
+    // is the only way up: wait for it to be down before turning the hourglass.
+    id: 'BTL-T2', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 780, w: 320, h: 120 },
-      { id: 'p1', x: 800, y: 520, w: 160 },
-      { id: 'p2', x: 1500, y: 420, w: 160 },
-      { id: 'g2', x: 2160, y: 640, w: 240, h: 260 },
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'lift', x: 720, y: 760, w: 140, move: { mode: 'loop', dy: -400, speed: 160, active: true } },
+      { id: 'h', x: 880, y: 360, w: 320 },
+      { id: 'br', x: 1200, y: 1100, w: 400, move: { dy: -740, speed: 900 } },
+      { id: 'ex', x: 1600, y: 360, w: 400, h: 540 },
+    ],
+    levers: [{ x: 600, plat: 'g1', type: 'timer', time: 6, actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 1945, y: 100, w: 120, h: 270 },
+  },
+  {
+    // "Gears": the first stair turns only while Hazop rides it, and it drives the second.
+    // Ride it until the second lies flat, then step off: both stop where they are.
+    id: 'BTL-G', ch: 3, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 300, h: 140 },
+      { id: 'pm', x: 720, y: 560, w: 60 },
+      { id: 'pe', x: 1250, y: 450, w: 550, h: 450 },
     ],
     stairs: [
-      { id: 's1', x: 540, y: 600, len: 420, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1220, y: 500, len: 440, ang: 0, kind: 'rot', on: true, dir: -1, speed: 30 },
-      { id: 's3', x: 1900, y: 560, len: 420, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
+      { id: 's1', x: 500, y: 600, len: 400, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30, ride: true },
+      { id: 's2', x: 1000, y: 450, len: 400, ang: 90, link: 's1', ratio: -0.5 },
     ],
-    exit: { x: 2345, y: 380, w: 120, h: 270 },
+    exit: { x: 1745, y: 190, w: 120, h: 270 },
   },
   {
     id: 'BTL-5', ch: 3, w: 2000, h: 900,
@@ -742,11 +788,21 @@ function createWorld(room, opts) {
       move: m ? {
         dx: m.dx || 0, dy: m.dy || 0, speed: m.speed || 120,
         mode: m.mode || 'toggle', // 'toggle' | 'loop'
-        u: m.u0 || 0, target: m.u0 || 0, active: !!m.active, dir: 1,
+        u: m.u0 || 0, target: m.u0 || 0, active: !!m.active, dir: 1, pause: m.pause || 0, wait: 0,
       } : null,
       kind: p.kind || 'slab',
+      crumble: !!p.crumble, touched: false, shake: 0, gone: false, fallY: 0,
     });
   }
+  // crates: pushable blocks that behave as dynamic platforms
+  for (const c of room.crates || []) {
+    w.platforms.push({
+      id: c.id, x0: c.x - 22, y0: c.y - 44, w: 44, h: 44, x: c.x - 22, y: c.y - 44, vx: 0, vy: 0,
+      move: null, kind: 'crate', cvy: 0, support: null, crumble: false, gone: false,
+    });
+  }
+  w.plates = [];
+  for (const pl of room.plates || []) w.plates.push({ x: pl.x, plat: pl.plat, dx: 0, w: pl.w || 70, actions: pl.actions || [], down: false, anim: 0 });
   for (const s of room.stairs || []) {
     w.stairs.push({
       id: s.id, x: s.x, y: s.y, len: s.len || 440,
@@ -757,15 +813,22 @@ function createWorld(room, opts) {
       rest: (s.rest != null ? s.rest : (s.ang || 0)) * DEG,
       steps: s.steps || 12,
       flip: !!s.flip,
+      ride: !!s.ride,                 // rotates only while Hazop is on it
+      link: s.link || null, ratio: s.ratio != null ? s.ratio : -1, // geared to another stair
+      ang0: (s.ang || 0) * DEG,
     });
   }
+  // geared stairs are updated after the stair they follow
+  w.stairs.sort((a, b) => (a.link ? 1 : 0) - (b.link ? 1 : 0));
   for (const l of room.levers || []) {
-    w.levers.push({ hits: 0, x: l.x, plat: l.plat, dx: 0, state: !!l.state, inside: false, actions: l.actions || [], anim: l.state ? 1 : 0 });
+    w.levers.push({ hits: 0, x: l.x, plat: l.plat, dx: 0, state: !!l.state, inside: false, actions: l.actions || [], anim: l.state ? 1 : 0,
+      type: l.type || 'switch', time: l.time || 5, timer: 0, locked: false });
   }
   for (const L of w.levers) {
     const p = w.platforms.find(p => p.id === L.plat);
     L.dx = L.x - p.x0;
   }
+  for (const pl of w.plates) { const p = w.platforms.find(p => p.id === pl.plat); pl.dx = pl.x - p.x0; }
   if (room.memory) {
     const m = room.memory;
     w.mem = { x: m.x, y: m.y, dx: 0, dy: 0, plat: m.plat };
@@ -842,8 +905,11 @@ function stepWorld(w, input, dt) {
         if (m.u < m.target) m.u = Math.min(m.target, m.u + du);
         else if (m.u > m.target) m.u = Math.max(m.target, m.u - du);
       } else if (m.active) {
-        m.u += du * m.dir;
-        if (m.u >= 1) { m.u = 1; m.dir = -1; } else if (m.u <= 0) { m.u = 0; m.dir = 1; }
+        if (m.wait > 0) m.wait -= dt;          // dwell at the ends of the run
+        else {
+          m.u += du * m.dir;
+          if (m.u >= 1) { m.u = 1; m.dir = -1; m.wait = m.pause; } else if (m.u <= 0) { m.u = 0; m.dir = 1; m.wait = m.pause; }
+        }
       }
       // smooth easing for position
       const e = m.mode === 'toggle' ? m.u * m.u * (3 - 2 * m.u) : m.u;
@@ -856,8 +922,13 @@ function stepWorld(w, input, dt) {
   // --- stairs ---
   for (const st of w.stairs) {
     st.prevAng = st.ang;
-    if (st.kind === 'rot') {
-      st.angVel = st.on ? st.dir * st.speed : 0;
+    if (st.link) {
+      const L = stairById(w, st.link);
+      st.angVel = L.angVel * st.ratio;
+      st.ang = st.ang0 + (L.ang - L.ang0) * st.ratio;
+    } else if (st.kind === 'rot') {
+      const riding = P.state === 'stair' && P.stair === st.id;
+      st.angVel = st.on && (!st.ride || riding) ? st.dir * st.speed : 0;
       st.ang += st.angVel * dt;
     } else if (st.kind === 'weight') {
       let torque = 0;
@@ -868,6 +939,36 @@ function stepWorld(w, input, dt) {
       if (st.ang < st.min) { st.ang = st.min; st.angVel = 0; }
       if (st.ang > st.max) { st.ang = st.max; st.angVel = 0; }
     }
+  }
+
+  // --- crumbling platforms ---
+  for (const p of w.platforms) {
+    if (!p.crumble || p.gone) continue;
+    const onIt = P.state === 'ground' && P.plat === p.id;
+    if (onIt) p.touched = true;
+    else if (p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+    if (p.shake > 0) { p.shake += dt; if (p.shake > 0.45) { p.gone = true; ev.push({ type: 'crumbled', x: p.x + p.w / 2, y: p.y }); } }
+  }
+  // --- crates: gravity, resting, carried by movers ---
+  for (const c of w.platforms) {
+    if (c.kind !== 'crate') continue;
+    const ox = c.x, oy = c.y;
+    let sup = null;
+    for (const q of w.platforms) {
+      if (q === c || q.gone) continue;
+      if (c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2 && Math.abs((c.y + c.h) - q.y) < 2) { sup = q; break; }
+    }
+    if (sup) { c.cvy = 0; c.x += sup.mdx || 0; c.y = sup.y - c.h; }
+    else {
+      c.cvy = Math.min(PHYS.MAX_FALL, c.cvy + PHYS.G * dt);
+      const bottom0 = c.y + c.h; c.y += c.cvy * dt;
+      for (const q of w.platforms) {
+        if (q === c || q.gone) continue;
+        if (c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2 && bottom0 <= q.y - (q.mdy || 0) + 1 && c.y + c.h >= q.y) { c.y = q.y - c.h; c.cvy = 0; ev.push({ type: 'crateland', x: c.x + c.w / 2, y: q.y }); break; }
+      }
+      if (c.y > w.room.h + 200) { c.x = c.x0; c.y = c.y0 - 200; c.cvy = 0; ev.push({ type: 'crateback' }); }
+    }
+    c.mdx = c.x - ox; c.mdy = c.y - oy;
   }
 
   // --- input buffers ---
@@ -884,14 +985,33 @@ function stepWorld(w, input, dt) {
     const lx = p.x + L.dx, ly = p.y;
     const inside = P.state === 'ground' && P.plat === p.id && Math.abs(P.x - lx) < 24 && Math.abs(P.y - ly) < 3;
     L.cool = Math.max(0, (L.cool || 0) - dt);
-    if (inside && !L.inside && L.cool <= 0) {
+    if (L.type === 'timer' && L.timer > 0) {
+      const before = Math.ceil(L.timer);
+      L.timer -= dt;
+      if (Math.ceil(L.timer) !== before && L.timer > 0) ev.push({ type: 'tick', x: lx, y: ly });
+      if (L.timer <= 0) { L.timer = 0; L.state = false; runActions(w, L.actions, true); ev.push({ type: 'timeup', x: lx, y: ly }); }
+    }
+    const usable = !L.locked && !(L.type === 'timer' && L.timer > 0);
+    if (inside && !L.inside && L.cool <= 0 && usable) {
       L.cool = 0.7;
       L.state = !L.state; L.hits++;
       runActions(w, L.actions, !L.state); // switched back = undo
-      ev.push({ type: 'lever', x: lx, y: ly });
+      if (L.type === 'once') { L.locked = true; ev.push({ type: 'lock', x: lx, y: ly }); }
+      if (L.type === 'timer') L.timer = L.time;
+      ev.push({ type: 'lever', x: lx, y: ly, kind: L.type });
     }
     L.inside = inside;
     L.anim += ((L.state ? 1 : 0) - L.anim) * Math.min(1, dt * 10);
+  }
+
+  // --- pressure plates: held down by Hazop or a crate ---
+  for (const pl of w.plates) {
+    const p = platById(w, pl.plat);
+    const px = p.x + pl.dx, py = p.y;
+    let down = P.state === 'ground' && P.plat === p.id && Math.abs(P.x - px) < pl.w / 2 + 6;
+    for (const c of w.platforms) if (c.kind === 'crate' && Math.abs(c.y + c.h - py) < 3 && c.x + c.w > px - pl.w / 2 && c.x < px + pl.w / 2) down = true;
+    if (down !== pl.down) { pl.down = down; runActions(w, pl.actions, !down); ev.push({ type: 'plate', down, x: px, y: py }); }
+    pl.anim += ((down ? 1 : 0) - pl.anim) * Math.min(1, dt * 14);
   }
 
   // --- memory ---
@@ -929,7 +1049,7 @@ function updateGroundAir(w, P, move, dt, ev) {
   // carried by platform
   if (P.state === 'ground' && P.plat != null) {
     const p = platById(w, P.plat);
-    P.x += p.mdx; P.y += p.mdy;
+    P.x += p.mdx || 0; P.y += p.mdy || 0;
   }
 
   // horizontal
@@ -959,7 +1079,19 @@ function updateGroundAir(w, P, move, dt, ev) {
   P.x += P.vx * dt;
   const PW = PHYS.PW, PH = PHYS.PH;
   for (const p of w.platforms) {
+    if (p.gone) continue;
     if (P.y > p.y + 0.5 && P.y - PH < p.y + p.h && P.x + PW > p.x && P.x - PW < p.x + p.w) {
+      if (p.kind === 'crate' && P.state === 'ground' && move && Math.abs(P.y - (p.y + p.h)) < 4) {
+        // push the crate (slower walk), unless something blocks it
+        const dir = move, pen = dir > 0 ? (P.x + PW) - p.x : p.x + p.w - (P.x - PW);
+        const step = dir * Math.min(pen, 150 * dt + 0.5);
+        let blocked = p.x + step < 0 || p.x + p.w + step > room.w;
+        for (const q of w.platforms) {
+          if (q === p || q.gone) continue;
+          if (p.y + p.h > q.y + 1 && p.y < q.y + q.h && p.x + step + p.w > q.x && p.x + step < q.x + q.w) { blocked = true; break; }
+        }
+        if (!blocked) { p.x += step; P.vx = dir * 150; p.pushT = (p.pushT || 0) + dt; if (p.pushT > 0.22) { p.pushT = 0; ev.push({ type: 'push' }); } }
+      }
       if (P.state === 'air' && P.y - p.y < 24 && P.vy > -260) { // ledge assist
         P.y = p.y; P.vy = 0; P.state = 'ground'; P.plat = p.id; P.x = Math.max(p.x + 2, Math.min(p.x + p.w - 2, P.x));
         ev.push({ type: 'land', hard: false }); P.airTime = 0; continue;
@@ -979,16 +1111,18 @@ function updateGroundAir(w, P, move, dt, ev) {
   if (P.state === 'ground') {
     // stay glued if still above the platform
     const p = platById(w, P.plat);
-    if (p && P.x + PW > p.x && P.x - PW < p.x + p.w) { P.y = p.y; grounded = true; }
+    if (p && !p.gone && P.x + PW > p.x && P.x - PW < p.x + p.w) { P.y = p.y; grounded = true; }
     else {
       // look for another platform at same level
       for (const q of w.platforms) {
+        if (q.gone) continue;
         if (Math.abs(q.y - P.y) < 6 && P.x + PW > q.x && P.x - PW < q.x + q.w) { P.y = q.y; P.plat = q.id; grounded = true; break; }
       }
     }
     if (!grounded) { P.state = 'air'; P.plat = null; P.airTime = 0; }
   } else {
     for (const p of w.platforms) {
+      if (p.gone) continue;
       if (P.x + PW <= p.x || P.x - PW >= p.x + p.w) continue;
       // landing: feet crossed the top surface (account for platform motion)
       if (P.vy >= 0 && oy <= p.y - p.mdy + 1 && P.y >= p.y) {
@@ -1100,6 +1234,7 @@ function cloneWorld(w) {
     platforms: w.platforms.map(p => Object.assign({}, p, { move: p.move ? Object.assign({}, p.move) : null })),
     stairs: w.stairs.map(s => Object.assign({}, s)),
     levers: w.levers.map(l => Object.assign({}, l)),
+    plates: w.plates.map(p => Object.assign({}, p)),
     player: Object.assign({}, w.player, { cool: Object.assign({}, w.player.cool) }),
     events: [],
   };
@@ -1403,12 +1538,33 @@ function drawStair(ctx, st, t) {
   ctx.fillStyle = COL.ink;
   stairPath(ctx, st.len, st.steps, 28); ctx.fill();
   // pivot
-  ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.stroke();
+  if (st.link || st.gear) {           // geared pair: a cog at the pivot
+    ctx.fillStyle = COL.ink; ctx.beginPath();
+    for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10, r = i % 2 ? 13 : 17; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.stroke();
+    if (st.ride) { ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, 7); ctx.fill(); }
+  } else if (st.ride) {               // turns only with Hazop on it: a hollow pivot with a dot
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, 7); ctx.fill();
+  } else {
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.stroke();
+  }
   ctx.restore();
 }
 
-function drawPlatform(ctx, p) {
+// the chain that ties two geared stairs
+function drawGearLink(ctx, a, b) {
+  ctx.save(); ctx.strokeStyle = 'rgba(27,21,21,.35)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+}
+
+function drawPlatform(ctx, p, t) {
+  if (p.gone) return;
+  if (p.kind === 'crate') { drawCrate(ctx, p); return; }
+  if (p.crumble) { drawCrumbling(ctx, p, t || 0); return; }
   ctx.fillStyle = 'rgba(40,25,20,.18)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, Math.min(p.h, 60));
   ctx.fillStyle = COL.ink; ctx.fillRect(p.x, p.y, p.w, p.h);
   ctx.fillStyle = COL.inkHi; ctx.fillRect(p.x, p.y, p.w, 3);
@@ -1418,7 +1574,57 @@ function drawPlatform(ctx, p) {
   }
 }
 
-function drawLever(ctx, x, y, anim) {
+function drawCrumbling(ctx, p, t) {
+  const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : 0;
+  ctx.save(); ctx.translate(sh, p.shake > 0 ? p.shake * 6 : 0);
+  ctx.fillStyle = 'rgba(40,25,20,.15)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, p.h);
+  ctx.fillStyle = '#3a2f2b'; ctx.fillRect(p.x, p.y, p.w, p.h);
+  // separate stones with cracks
+  ctx.strokeStyle = '#a89c86'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let x = p.x + 28; x < p.x + p.w; x += 34) { ctx.moveTo(x, p.y); ctx.lineTo(x - 5, p.y + p.h * 0.55); ctx.lineTo(x + 3, p.y + p.h); }
+  ctx.moveTo(p.x + 6, p.y + p.h * 0.5); ctx.lineTo(p.x + 20, p.y + p.h * 0.45);
+  ctx.stroke();
+  ctx.fillStyle = '#5a4c44'; ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.restore();
+}
+
+function drawCrate(ctx, c) {
+  ctx.fillStyle = 'rgba(40,25,20,.18)'; ctx.fillRect(c.x + 8, c.y + 10, c.w, c.h);
+  ctx.fillStyle = COL.ink; ctx.fillRect(c.x, c.y, c.w, c.h);
+  ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.strokeRect(c.x + 7, c.y + 7, c.w - 14, c.h - 14);
+  ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(c.x + c.w / 2, c.y + c.h / 2, 4, 0, 7); ctx.fill();
+}
+
+function drawPlate(ctx, x, y, w, anim) {
+  const h = 13 - anim * 8;
+  ctx.fillStyle = COL.ink; ctx.fillRect(x - w / 2 - 5, y - 4, w + 10, 4);
+  ctx.fillStyle = anim > 0.5 ? '#f3dc6e' : '#efe4c0'; ctx.fillRect(x - w / 2, y - h - 3, w, h);
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 2; ctx.strokeRect(x - w / 2, y - h - 2, w, h);
+}
+
+function drawLever(ctx, x, y, anim, L) {
+  L = L || {};
+  if (L.type === 'once') {           // rusty one-way hinge: red knob, padlock once used
+    ctx.save(); ctx.translate(x, y);
+    const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
+    ctx.fillStyle = '#8f2a1e'; ctx.beginPath(); ctx.arc(Math.cos(a) * 30, Math.sin(a) * 30, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = COL.ink; ctx.fillRect(-9, -5, 18, 5);
+    if (L.locked) { ctx.fillStyle = COL.ink; ctx.fillRect(14, -16, 14, 11); ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(21, -16, 5, Math.PI, 0); ctx.stroke(); }
+    ctx.restore(); return;
+  }
+  if (L.type === 'timer') {          // hourglass lever with a countdown ring
+    ctx.save(); ctx.translate(x, y);
+    const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
+    const kx = Math.cos(a) * 30, ky = Math.sin(a) * 30;
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.moveTo(kx - 7, ky - 9); ctx.lineTo(kx + 7, ky - 9); ctx.lineTo(kx - 7, ky + 9); ctx.lineTo(kx + 7, ky + 9); ctx.closePath(); ctx.fill();
+    if (L.timer > 0) { ctx.strokeStyle = 'rgba(255,248,210,.95)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(kx, ky, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (L.timer / L.time)); ctx.stroke(); }
+    ctx.beginPath(); ctx.fillStyle = COL.ink; ctx.arc(0, 0, 6, Math.PI, 0); ctx.fill();
+    ctx.restore(); return;
+  }
   ctx.save(); ctx.translate(x, y);
   const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
   ctx.strokeStyle = COL.ink; ctx.lineWidth = 5; ctx.lineCap = 'round';
@@ -1752,6 +1958,13 @@ const Audio = (() => {
     },
     jump() { const f = noise(0.22, 500, 0.8, 0.12, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(2200, ctx.currentTime + 0.2); },
     land(hard) { noise(0.16, 260, 0.9, hard ? 0.5 : 0.3, 'lowpass', null, true); tone(70, 0.18, hard ? 0.35 : 0.2, 'sine'); },
+    lock() { const t = ctx.currentTime; noise(0.3, 220, 1, 0.5, 'lowpass', t + 0.15, true); tone(70, 0.4, 0.3, 'square', t + 0.15); tone(1400, 0.08, 0.05, 'square', t + 0.32); },
+    tick() { noise(0.03, 3200, 8, 0.16, 'bandpass'); },
+    timeup() { const t = ctx.currentTime; tone(330, 0.5, 0.06, 'sine', t); tone(247, 0.7, 0.06, 'sine', t + 0.18); },
+    plate(down) { noise(0.08, down ? 300 : 500, 2, 0.3, 'bandpass', null, true); tone(down ? 120 : 160, 0.12, 0.12, 'triangle'); },
+    push() { noise(0.22, 380, 0.7, 0.18, 'lowpass'); },
+    crack() { const t = ctx.currentTime; for (let i = 0; i < 4; i++) noise(0.05, 1800 + Math.random() * 800, 5, 0.2, 'bandpass', t + i * 0.06); },
+    rubble() { noise(0.9, 240, 0.6, 0.45, 'lowpass', null, true); tone(55, 0.6, 0.2, 'sine'); },
     attach() { tone(110, 0.25, 0.2, 'triangle'); noise(0.1, 2400, 4, 0.12, 'bandpass', null, true); },
     lever() {
       const t = ctx.currentTime;
@@ -1832,7 +2045,7 @@ const Audio = (() => {
   const FONT_TYPE = '"American Typewriter", "Courier Prime", "Courier New", Courier, monospace';
   const FONT_THINK = 'Georgia, "Times New Roman", serif';
   const FONT_HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
-  const SAVE_KEY = 'stairways_save_v1', CFG_KEY = 'stairways_cfg_v2';
+  const SAVE_KEY = 'stairways_save_v2', CFG_KEY = 'stairways_cfg_v2';
   const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
   if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -2117,6 +2330,15 @@ const Audio = (() => {
         case 'land': Audio.sfx.land(e.hard); puff(P.x, P.y, e.hard ? 10 : 5, 'rgba(70,55,45,.5)', 120, 40); break;
         case 'attach': Audio.sfx.attach(); puff(P.x, P.y, 5, 'rgba(70,55,45,.45)', 90, 30); break;
         case 'lever': Audio.sfx.lever(); puff(e.x, e.y - 20, 8, 'rgba(255,250,220,.9)', 140, 90); break;
+        case 'lock': Audio.sfx.lock(); break;
+        case 'tick': Audio.sfx.tick(); break;
+        case 'timeup': Audio.sfx.timeup(); puff(e.x, e.y - 20, 6, 'rgba(255,250,220,.7)', 100, 60); break;
+        case 'plate': Audio.sfx.plate(e.down); break;
+        case 'push': Audio.sfx.push(); break;
+        case 'crateland': Audio.sfx.land(true); puff(e.x, e.y, 6, 'rgba(70,55,45,.5)', 120, 30); break;
+        case 'crateback': break;
+        case 'crumble': Audio.sfx.crack(); puff(e.x, e.y, 6, 'rgba(90,76,68,.6)', 160, 20); break;
+        case 'crumbled': Audio.sfx.rubble(); puff(e.x, e.y + 10, 16, 'rgba(90,76,68,.7)', 260, 10); break;
         case 'memory':
           G.mem.add(e.id); Audio.sfx.memory(); sparkle(e.x, e.y); G.flash = 1;
           save();
@@ -2459,9 +2681,11 @@ const Audio = (() => {
 
     ctx.save(); ctx.translate(-Math.round(cam), 0);
     if (room.exit) drawExitArrow(ctx, room.exit, room, w.exitOpen, G.t);
+    for (const st of w.stairs) if (st.link) { const L = w.stairs.find(q => q.id === st.link); drawGearLink(ctx, st, L); L.gear = true; }
     for (const st of w.stairs) drawStair(ctx, st, G.t);
-    for (const p of w.platforms) drawPlatform(ctx, p);
-    for (const L of w.levers) { const p = w.platforms.find(q => q.id === L.plat); drawLever(ctx, p.x + L.dx, p.y, L.anim); }
+    for (const p of w.platforms) drawPlatform(ctx, p, G.t);
+    for (const pl of w.plates || []) { const p = w.platforms.find(q => q.id === pl.plat); drawPlate(ctx, p.x + pl.dx, p.y, pl.w, pl.anim); }
+    for (const L of w.levers) { const p = w.platforms.find(q => q.id === L.plat); drawLever(ctx, p.x + L.dx, p.y, L.anim, L); }
     if (w.mem && !w.memoryTaken) drawMemory(ctx, w.mem.x, w.mem.y, room.memory.id, G.t);
     // particles (dust)
     for (const p of G.particles) {
