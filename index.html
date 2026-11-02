@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.20 — built 2026-11-02 16:14 UTC -->
+<!-- Stairways v0.23 — built 2026-11-02 16:45 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.20">
+<meta name="version" content="0.23">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.20';
+const GAME_VERSION = '0.23';
 
 // ---- i18n.js ----
 // ============================================================
@@ -328,7 +328,7 @@ const ROOMS = [
     ],
     stairs: [
       { id: 's1', x: 970, y: 620, len: 420, ang: 200, kind: 'rot', on: true, dir: 1, speed: 28 },
-      { id: 's2', x: 660, y: 330, len: 400, ang: 215, kind: 'rot', on: false, dir: 1, speed: 22 },
+      { id: 's2', x: 660, y: 330, len: 400, ang: 325, kind: 'rot', on: false, dir: 1, speed: 22 },
     ],
     levers: [{ x: 1450, plat: 'pl', actions: [{ stair: 's1', invert: true }, { stair: 's2', invert: true, on: true }] }],
     memory: { id: 'pnt_diary', x: 150, y: 458 },
@@ -1211,6 +1211,13 @@ function updateOnStair(w, P, move, dt, ev) {
   let ds = 0;
   if (move) ds = P.lockSign * PHYS.STAIR_WALK * dt;
   const lim = st.len / 2 - 10;
+  // walking past the end of a stair wraps Hazop around it onto the other face
+  const pushingEnd = move && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0;
+  P.endPush = pushingEnd ? (P.endPush || 0) + dt : 0;
+  if (P.endPush > 0.3) {
+    P.side = -P.side; P.lockSign = -P.lockSign; P.facing = -P.facing; ds = 0; P.endPush = 0;
+    ev.push({ type: 'wrap', x: P.x, y: P.y });
+  }
   const ns = clamp(P.s + ds, -lim, lim);
   const moved = Math.abs(ns - P.s) > 0.01;
   P.s = ns;
@@ -1970,6 +1977,43 @@ const Audio = (() => {
     jump() { const f = noise(0.22, 500, 0.8, 0.12, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(2200, ctx.currentTime + 0.2); },
     land(hard) { noise(0.16, 260, 0.9, hard ? 0.5 : 0.3, 'lowpass', null, true); tone(70, 0.18, hard ? 0.35 : 0.2, 'sine'); },
     lock() { const t = ctx.currentTime; noise(0.3, 220, 1, 0.5, 'lowpass', t + 0.15, true); tone(70, 0.4, 0.3, 'square', t + 0.15); tone(1400, 0.08, 0.05, 'square', t + 0.32); },
+    wrap() { const f = noise(0.35, 300, 0.7, 0.14, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.3); tone(220, 0.4, 0.04, 'sine'); },
+    // long rusty metal scrape (stick-slip), once per revolution of a stair
+    scrape(vol, pitch) {
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol)), p = pitch || 1, dur = 1.6;
+      const out = ctx.createGain(); out.gain.setValueAtTime(0, t);
+      out.gain.linearRampToValueAtTime(0.32 * v, t + 0.25); out.gain.linearRampToValueAtTime(0.22 * v, t + dur * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      // stick-slip tremolo
+      const trem = ctx.createGain(); trem.gain.value = 0.6;
+      const lfo = ctx.createOscillator(); lfo.frequency.setValueAtTime(14 * p, t); lfo.frequency.linearRampToValueAtTime(22 * p, t + dur);
+      const lg = ctx.createGain(); lg.gain.value = 0.4; lfo.connect(lg); lg.connect(trem.gain);
+      trem.connect(out); out.connect(sfxBus); out.connect(verb);
+      // grinding noise, resonant and sliding
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 7;
+      bp.frequency.setValueAtTime(900 * p, t); bp.frequency.linearRampToValueAtTime(1700 * p, t + dur * 0.6); bp.frequency.linearRampToValueAtTime(1100 * p, t + dur);
+      src.connect(bp); bp.connect(trem);
+      // inharmonic squeal partials
+      for (const [f, g] of [[1480, 0.05], [2330, 0.03], [3170, 0.018]]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f * p, t); o.frequency.linearRampToValueAtTime(f * p * 1.06, t + dur * 0.5); o.frequency.linearRampToValueAtTime(f * p * 0.97, t + dur);
+        const og = ctx.createGain(); og.gain.value = g; const lp = ctx.createBiquadFilter(); lp.type = 'bandpass'; lp.frequency.value = f * p; lp.Q.value = 12;
+        o.connect(lp); lp.connect(og); og.connect(trem); o.start(t); o.stop(t + dur + 0.05);
+      }
+      lfo.start(t); lfo.stop(t + dur + 0.05); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+    },
+    // soft air whoosh when a moving platform sets off
+    swoosh(vol) {
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      const f = noise(0.7, 300, 1.2, 0.22 * v, 'bandpass', t, true);
+      if (f) { f.frequency.setValueAtTime(250, t); f.frequency.exponentialRampToValueAtTime(1400, t + 0.3); f.frequency.exponentialRampToValueAtTime(400, t + 0.65); }
+    },
+    ratchet(vol, pitch) {
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      noise(0.025, 2600 * (pitch || 1), 9, 0.22 * v, 'bandpass', t, true);
+      tone(1150 * (pitch || 1), 0.05, 0.05 * v, 'square', t + 0.004);
+      noise(0.04, 700 * (pitch || 1), 3, 0.12 * v, 'bandpass', t + 0.012);
+    },
     tick() { noise(0.03, 3200, 8, 0.16, 'bandpass'); },
     timeup() { const t = ctx.currentTime; tone(330, 0.5, 0.06, 'sine', t); tone(247, 0.7, 0.06, 'sine', t + 0.18); },
     plate(down) { noise(0.08, down ? 300 : 500, 2, 0.3, 'bandpass', null, true); tone(down ? 120 : 160, 0.12, 0.12, 'triangle'); },
@@ -2011,8 +2055,8 @@ const Audio = (() => {
   // called each frame with 0..1 intensity of rotating machinery near the camera
   function machinery(level) {
     if (!ctx || !machine) return;
-    machine.gain.gain.setTargetAtTime(level * 0.05, ctx.currentTime, 0.3);
-    if (level > 0.05 && ctx.currentTime > machine.next) { // occasional gear clank
+    machine.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); // hum disabled: mechanisms speak through scrapes
+    if (false) { // occasional gear clank (disabled)
       machine.next = ctx.currentTime + 0.9 + Math.random() * 2.2;
       const t = ctx.currentTime;
       for (let i = 0; i < 3; i++) noise(0.05, 900 + Math.random() * 600, 5, 0.06 * level, 'bandpass', t + i * 0.09, true);
@@ -2057,7 +2101,8 @@ const Audio = (() => {
   const FONT_THINK = 'Georgia, "Times New Roman", serif';
   const FONT_HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
   const SAVE_KEY = 'stairways_save_v2', CFG_KEY = 'stairways_cfg_v2';
-  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  // a phone/tablet is one whose primary pointer is a finger (Macs with touch support report touch points too)
+  const isTouch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches);
 
   if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
@@ -2311,6 +2356,22 @@ const Audio = (() => {
       let lvl = 0;
       for (const st of G.world.stairs) if (st.kind === 'rot' && st.on) { const dx = Math.abs(st.x - (G.camX + VIEW_W / 2)); lvl = Math.max(lvl, 1 - Math.min(1, dx / 1200)); }
       Audio.machinery(lvl);
+      // ratchet: a metallic click every few degrees of rotation / pixels of travel, louder when near
+      const near = x => Math.max(0, 1 - Math.abs(x - (G.camX + VIEW_W / 2)) / 1100);
+      // one long metal scrape per full revolution of each turning stair (offset so they don't sync)
+      G.world.stairs.forEach((st, i) => {
+        if (st._rev == null) st._rev = (i * 2.399) % (2 * Math.PI);
+        st._rev += Math.abs(st.angVel || 0) * dt;
+        if (st._rev >= 2 * Math.PI) { st._rev -= 2 * Math.PI; const v = near(st.x); if (v > 0.05) Audio.sfx.scrape(v, 0.85 + (i % 4) * 0.08); }
+      });
+      // a whoosh each time a moving platform sets off (outward or back)
+      for (const p of G.world.platforms) {
+        if (!p.move) continue;
+        const sp = Math.hypot(p.mdx || 0, p.mdy || 0), dir = Math.sign((p.mdx || 0) + (p.mdy || 0));
+        const moving = sp > 0.05;
+        if (moving && (!p._moving || dir !== p._dir)) { const v = near(p.x + p.w / 2); if (v > 0.05) Audio.sfx.swoosh(v); }
+        p._moving = moving; if (moving) p._dir = dir;
+      }
     } else Audio.machinery(0);
     // particles
     for (const p of G.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy = p.vy * 0.96 + (p.glow ? -10 : 30) * dt; }
@@ -2341,6 +2402,7 @@ const Audio = (() => {
         case 'land': Audio.sfx.land(e.hard); puff(P.x, P.y, e.hard ? 10 : 5, 'rgba(70,55,45,.5)', 120, 40); break;
         case 'attach': Audio.sfx.attach(); puff(P.x, P.y, 5, 'rgba(70,55,45,.45)', 90, 30); break;
         case 'lever': Audio.sfx.lever(); puff(e.x, e.y - 20, 8, 'rgba(255,250,220,.9)', 140, 90); break;
+        case 'wrap': Audio.sfx.wrap(); puff(e.x, e.y, 5, 'rgba(255,250,220,.7)', 90, 20); break;
         case 'lock': Audio.sfx.lock(); break;
         case 'tick': Audio.sfx.tick(); break;
         case 'timeup': Audio.sfx.timeup(); puff(e.x, e.y - 20, 6, 'rgba(255,250,220,.7)', 100, 60); break;
@@ -2411,7 +2473,6 @@ const Audio = (() => {
           { label: t.language, value: TEXT[cfg.lang].lang, adj: d => { cfg.lang = langs[(langs.indexOf(cfg.lang) + d + langs.length) % langs.length]; } },
           { label: t.music, value: pct(cfg.music), adj: d => { cfg.music = Math.max(0, Math.min(1, Math.round((cfg.music + d * 0.1) * 10) / 10)); } },
           { label: t.sfx, value: pct(cfg.sfx), adj: d => { cfg.sfx = Math.max(0, Math.min(1, Math.round((cfg.sfx + d * 0.1) * 10) / 10)); Audio.sfx.step('stone'); } },
-          { label: t.hints, value: cfg.hints ? t.on : t.off, adj: () => { cfg.hints = !cfg.hints; } },
           { label: t.fullscreen, value: document.fullscreenElement ? t.on : t.off, adj: () => toggleFullscreen() },
           { label: t.back, act: () => { saveCfg(); G.state = G.prevState || 'menu'; G.menuSel = 0; } },
         ];
@@ -2756,11 +2817,7 @@ const Audio = (() => {
   function drawHints(a) {
     ctx.save(); ctx.globalAlpha = a;
     if (isTouch) {
-      ctx.font = `italic 44px ${FONT_HAND}`; ctx.fillStyle = '#1b1515'; ctx.textAlign = 'center';
-      ctx.fillText(T().swipeMove, 330, 640);
-      arrow(300, 730, 90, 730, 26); arrow(360, 730, 570, 730, 26);
-      ctx.fillText(T().swipeJump, 1180, 640);
-      arrow(1480, 820, 1480, 560, 26);
+      // touch hints removed: the mobile control scheme is still to be designed
     } else {
       ctx.font = `24px ${FONT_TYPE}`; ctx.textAlign = 'center';
       const txt = T().keysHint, w = ctx.measureText(txt).width + 60;
