@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.28 — built 2026-11-02 20:55 UTC -->
+<!-- Stairways v0.29 — built 2026-11-02 20:58 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.28">
+<meta name="version" content="0.29">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.28';
+const GAME_VERSION = '0.29';
 
 // ---- i18n.js ----
 // ============================================================
@@ -1706,7 +1706,13 @@ const ICONS = {
   btl_bell(c) { c.fillStyle = '#4a3a2a'; c.fillRect(-24, 14, 48, 8); c.fillStyle = '#d9b44a'; c.beginPath(); c.moveTo(-20, 14); c.quadraticCurveTo(-20, -14, 0, -14); c.quadraticCurveTo(20, -14, 20, 14); c.fill(); c.fillStyle = '#f0d77a'; c.beginPath(); c.ellipse(-6, -2, 4, 8, 0.4, 0, 7); c.fill();
     c.fillStyle = '#8a7a5a'; c.fillRect(-2, -22, 4, 8); c.beginPath(); c.arc(0, -22, 4, 0, 7); c.fill(); },
   btl_corks(c) { for (const [x, y, r] of [[-12, 6, 0.3], [8, 10, -0.4], [0, -10, 1.2]]) { c.save(); c.translate(x, y); c.rotate(r); c.fillStyle = '#b98a52'; c.fillRect(-7, -10, 14, 20); c.fillStyle = '#d4a86a'; c.beginPath(); c.ellipse(0, -10, 7, 3, 0, 0, 7); c.fill(); c.fillStyle = '#8a1f2a'; c.beginPath(); c.ellipse(0, 10, 7, 3, 0, 0, 7); c.fill(); c.restore(); } },
-  btl_neon(c) { c.fillStyle = '#211a24'; c.fillRect(-28, -16, 56, 32); c.save(); c.shadowColor = '#ff3d7f'; c.shadowBlur = 12; line(c, 2.5, '#ff6a9a'); c.font = 'bold 15px sans-serif'; c.strokeText('BAR', -16, 6); c.restore(); line(c, 1.5, '#7ae0ff'); c.strokeRect(-24, -12, 48, 24); },
+  btl_neon(c) {   // a small neon sign: a glass drawn in one tube, centred in its frame (no lettering)
+    c.fillStyle = '#211a24'; c.fillRect(-26, -18, 52, 36);
+    line(c, 1.5, 'rgba(122,224,255,.85)'); c.strokeRect(-22, -14, 44, 28);
+    c.save(); c.shadowColor = '#ff3d7f'; c.shadowBlur = 8; line(c, 2.2, '#ff7aa3'); c.lineJoin = 'round'; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-9, -9); c.lineTo(9, -9); c.lineTo(0, 1); c.closePath(); c.moveTo(0, 1); c.lineTo(0, 8); c.moveTo(-5, 9); c.lineTo(5, 9); c.stroke();
+    c.restore();
+  },
   btl_coins(c) { for (const [x, y] of [[-10, 8], [8, 10], [0, -4], [-4, 18]]) { c.fillStyle = '#c9a03a'; c.beginPath(); c.ellipse(x, y, 11, 6, 0, 0, 7); c.fill(); c.fillStyle = '#e9c45a'; c.beginPath(); c.ellipse(x, y - 2, 11, 6, 0, 0, 7); c.fill(); line(c, 1, '#9a7a2a'); c.beginPath(); c.ellipse(x, y - 2, 7, 3.5, 0, 0, 7); c.stroke(); } },
   btl_bottle(c) { c.fillStyle = '#3e6a3a'; c.beginPath(); c.moveTo(-10, 26); c.lineTo(-10, -2); c.lineTo(-5, -10); c.lineTo(-2, -14); c.lineTo(3, -8); c.lineTo(6, -12); c.lineTo(10, -4); c.lineTo(10, 26); c.fill();
     c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-7, 0, 3, 20); c.fillStyle = '#3e6a3a'; c.beginPath(); c.moveTo(16, 18); c.lineTo(24, 12); c.lineTo(22, 22); c.fill(); c.beginPath(); c.moveTo(-18, 22); c.lineTo(-14, 14); c.lineTo(-22, 16); c.fill(); },
