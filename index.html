@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- Stairways v0.20 — built 2026-11-02 16:14 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="version" content="0.20">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -21,6 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
+const GAME_VERSION = '0.20';
 
 // ---- i18n.js ----
 // ============================================================
@@ -2487,8 +2490,8 @@ const Audio = (() => {
     else if (G.world) drawWorld();
 
     switch (G.state) {
-      case 'title': drawTitleText(); break;
-      case 'menu': case 'confirm': drawMenuPanel(); break;
+      case 'title': drawTitleText(); drawVersion(); break;
+      case 'menu': case 'confirm': drawMenuPanel(); drawVersion(); break;
       case 'config': drawMenuPanel(true); break;
       case 'pause': dim(0.45); drawMenuPanel(); break;
       case 'credits': drawCredits(); break;
@@ -2523,6 +2526,13 @@ const Audio = (() => {
     ctx.fillStyle = 'rgba(255,252,235,.95)'; ctx.fillText(T().tagline, VIEW_W / 2, 460);
     ctx.globalAlpha = 0.5 + Math.sin(G.t * 2.5) * 0.35;
     ctx.font = `26px ${FONT_TYPE}`; ctx.fillStyle = 'rgba(40,25,20,.6)'; ctx.fillText('— ' + T().tapContinue + ' —', 802, 847); ctx.fillStyle = '#fbf8ea'; ctx.fillText('— ' + T().tapContinue + ' —', 800, 845);
+    ctx.restore();
+  }
+
+  function drawVersion() {
+    if (typeof GAME_VERSION === 'undefined') return;
+    ctx.save(); ctx.textAlign = 'right'; ctx.font = `18px ${FONT_TYPE}`;
+    ctx.fillStyle = 'rgba(251,248,234,.55)'; ctx.fillText('v' + GAME_VERSION, VIEW_W - 20, VIEW_H - 18);
     ctx.restore();
   }
 
