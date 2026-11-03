@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.30 — built 2026-11-02 21:44 UTC -->
+<!-- Stairways v0.38 — built 2026-11-03 08:12 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.30">
+<meta name="version" content="0.38">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.30';
+const GAME_VERSION = '0.38';
 
 // ---- i18n.js ----
 // ============================================================
@@ -286,6 +286,21 @@ const ROOMS = [
     exit: { x: 1945, y: 380, w: 120, h: 270 },
   },
   {
+    // The wall: a stair standing upright is a wall you can walk up. A cracked slab carries you only once.
+    id: 'PNT-T3', ch: 0, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 560, h: 140 },
+      { id: 'h1', x: 760, y: 340, w: 260 },
+      { id: 'cb', x: 1180, y: 340, w: 200, crumble: true },
+      { id: 'ex', x: 1540, y: 340, w: 260, h: 560 },
+    ],
+    stairs: [
+      { id: 'w1', x: 690, y: 540, len: 440, ang: 90, kind: 'static' },
+    ],
+    exit: { x: 1745, y: 80, w: 120, h: 270 },
+  },
+  {
     id: 'PNT-T2', ch: 0, w: 2000, h: 900,
     spawn: { x: 100, y: 720 },
     platforms: [
@@ -380,6 +395,22 @@ const ROOMS = [
     levers: [{ x: 300, plat: 'g1', actions: [{ plat: 'pm2', op: 'toggle' }] }],
     exit: { x: 2345, y: 340, w: 120, h: 270 },
     plan: ['L0x2', 'X'],
+  },
+  {
+    // The weight of a step: the stair turns only while Hazop stands on the pedal.
+    // Step off when it points the right way; it stays there.
+    id: 'BAL-T3', ch: 1, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 640, h: 140 },
+      { id: 'h', x: 1250, y: 380, w: 550, h: 520 },
+    ],
+    stairs: [
+      { id: 's1', x: 1000, y: 560, len: 480, ang: 60, kind: 'rot', on: false, dir: -1, speed: 30 },
+    ],
+    plates: [{ x: 300, plat: 'g1', actions: [{ stair: 's1', on: true }] }],
+    exit: { x: 1745, y: 120, w: 120, h: 270 },
+    plan: ['Q0', 'X'],
   },
   {
     id: 'BAL-3', ch: 1, w: 2400, h: 900,
@@ -568,6 +599,24 @@ const ROOMS = [
     exit: { x: 2145, y: 440, w: 120, h: 270 },
   },
   {
+    // Counterweight: two platforms hang on one chain. Alone, Hazop only sinks.
+    // Sink all the way down, pull the lever at the bottom: the crate drops on the other plate and lifts you.
+    id: 'JGT-B', ch: 2, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'pa', x: 760, y: 760, w: 200, balance: { with: 'pb', travel: 230, speed: 110 } },
+      { id: 'h', x: 1020, y: 400, w: 240 },
+      { id: 'pb', x: 1290, y: 760, w: 130 },
+      { id: 'td', x: 1285, y: 300, w: 140, move: { dy: 700, speed: 1400 } },
+      { id: 'ex', x: 1440, y: 400, w: 560, h: 500 },
+    ],
+    crates: [{ id: 'c1', x: 1355, y: 300 }],
+    levers: [{ x: 900, plat: 'pa', type: 'once', actions: [{ plat: 'td', op: 'on' }] }],
+    exit: { x: 1945, y: 140, w: 120, h: 270 },
+    plan: ['L0', 'X'],
+  },
+  {
     id: 'JGT-5', ch: 2, w: 2800, h: 900,
     spawn: { x: 100, y: 760 },
     platforms: [
@@ -636,6 +685,23 @@ const ROOMS = [
     ],
     crates: [{ id: 'c1', x: 300, y: 700 }],
     exit: { x: 1945, y: 230, w: 120, h: 260 },
+  },
+  {
+    // Dead weight: a floor that breaks can be useful. Leave the crate on the cracked slab and walk on:
+    // when the slab gives way the crate falls on the hanging plate, and the other plate rises to meet you.
+    id: 'BTL-B', ch: 3, w: 1900, h: 900,
+    spawn: { x: 100, y: 420 },
+    platforms: [
+      { id: 'g1', x: 0, y: 420, w: 700, h: 480 },
+      { id: 'cs', x: 700, y: 420, w: 200, crumble: true },
+      { id: 'pb', x: 720, y: 760, w: 160, balance: { with: 'pa', travel: 330, speed: 120 } },
+      { id: 'l2', x: 900, y: 420, w: 200 },
+      { id: 'pa', x: 1180, y: 760, w: 180 },
+      { id: 'ex', x: 1440, y: 420, w: 460, h: 480 },
+    ],
+    crates: [{ id: 'c1', x: 480, y: 420 }],
+    exit: { x: 1845, y: 160, w: 120, h: 270 },
+    plan: ['P:l2', 'X'],
   },
   {
     id: 'BTL-3', ch: 3, w: 2400, h: 900,
@@ -730,21 +796,27 @@ const ROOMS = [
 
   // ---------------- EPILOGUE ----------------
   {
-    id: 'EPL-1', ch: 4, w: 1600, h: 900, final: true,
+    // The clock: climb, counterweight, then wind the hands. The last memory sits on top of the tower.
+    id: 'EPL-1', ch: 4, w: 2700, h: 900, final: true,
     spawn: { x: 100, y: 780 },
     platforms: [
-      { id: 'g1', x: 0, y: 780, w: 400, h: 120 },
-      { id: 'pm', x: 850, y: 520, w: 200 },
-      { id: 'pc', x: 1520, y: 330, w: 80 },
+      { id: 'g1', x: 0, y: 780, w: 560, h: 120 },
+      { id: 'l1', x: 640, y: 460, w: 280 },
+      { id: 'pa', x: 920, y: 780, w: 120, balance: { with: 'pb', travel: 260, speed: 90 } },
+      { id: 'pb', x: 1080, y: 720, w: 180 },
+      { id: 'p2', x: 1300, y: 460, w: 160, h: 26 },
+      { id: 'pm', x: 1880, y: 260, w: 60 },
+      { id: 'pe', x: 2410, y: 150, w: 290, h: 750 },
     ],
+    crates: [{ id: 'c1', x: 760, y: 460 }],
     stairs: [
-      { id: 's1', x: 600, y: 560, len: 420, ang: 180, kind: 'rot', on: true, dir: 1, speed: 28 },
-      { id: 's2', x: 1290, y: 420, len: 420, ang: 90, kind: 'rot', on: false, dir: -1, speed: 26 },
+      { id: 'w1', x: 600, y: 600, len: 360, ang: 90, kind: 'static' },
+      { id: 's1', x: 1660, y: 300, len: 400, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30, ride: true },
+      { id: 's2', x: 2160, y: 150, len: 400, ang: 90, link: 's1', ratio: -0.5 },
     ],
-    levers: [{ x: 950, plat: 'pm', actions: [{ stair: 's2', on: true }] }],
-    memory: { id: 'epl_clock', x: 1560, y: 285 },
+    memory: { id: 'epl_clock', x: 2560, y: 105 },
     exit: null,
-    plan: ['L0', 'M'],
+    plan: ['P:p2', 'M'],
   },
 ];
 
@@ -803,7 +875,15 @@ function createWorld(room, opts) {
       } : null,
       kind: p.kind || 'slab',
       crumble: !!p.crumble, touched: false, shake: 0, gone: false, fallY: 0,
+      balD: p.balance || room.platforms.some(q => q.balance && q.balance.with === p.id) ? 0 : null,
     });
+  }
+  // balance pairs: two platforms hung on one chain over a pulley. Weight on one lowers it and
+  // raises the other by the same amount. Hazop weighs 1, a crate 2; unloaded, they level out.
+  w.balances = [];
+  for (const p of room.platforms) if (p.balance) {
+    const b = p.balance;
+    w.balances.push({ a: p.id, b: b.with, travel: b.travel || 150, speed: b.speed || 120, d: b.d0 || 0 });
   }
   // crates: pushable blocks that behave as dynamic platforms
   for (const c of room.crates || []) {
@@ -905,6 +985,23 @@ function stepWorld(w, input, dt) {
   const P = w.player;
   w.t += dt;
 
+  // --- balance pairs (loads from the previous step) ---
+  for (const B of w.balances) {
+    const A = platById(w, B.a), C = platById(w, B.b);
+    const load = q => {
+      let n = P.state === 'ground' && P.plat === q.id ? 1 : 0;
+      for (const c of w.platforms) if (c.kind === 'crate' && Math.abs(c.y + c.h - q.y) < 3 && c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2) n += 2;
+      return n;
+    };
+    const diff = load(A) - load(C);
+    const target = diff > 0 ? B.travel : diff < 0 ? -B.travel : 0;
+    const step = B.speed * dt;
+    const before = B.d;
+    B.d = B.d < target ? Math.min(target, B.d + step) : Math.max(target, B.d - step);
+    if (before !== B.d && (B.d === target)) ev.push({ type: 'balstop', x: A.x + A.w / 2, y: A.y });
+    A.balD = B.d; C.balD = -B.d;
+  }
+
   // --- platforms ---
   for (const p of w.platforms) {
     const ox = p.x, oy = p.y;
@@ -925,7 +1022,7 @@ function stepWorld(w, input, dt) {
       // smooth easing for position
       const e = m.mode === 'toggle' ? m.u * m.u * (3 - 2 * m.u) : m.u;
       p.x = p.x0 + m.dx * e; p.y = p.y0 + m.dy * e;
-    }
+    } else if (p.balD != null) p.y = p.y0 + p.balD;
     p.vx = (p.x - ox) / dt; p.vy = (p.y - oy) / dt;
     p.mdx = p.x - ox; p.mdy = p.y - oy;
   }
@@ -1251,6 +1348,7 @@ function cloneWorld(w) {
     stairs: w.stairs.map(s => Object.assign({}, s)),
     levers: w.levers.map(l => Object.assign({}, l)),
     plates: w.plates.map(p => Object.assign({}, p)),
+    balances: (w.balances || []).map(b => Object.assign({}, b)),
     player: Object.assign({}, w.player, { cool: Object.assign({}, w.player.cool) }),
     events: [],
   };
@@ -1575,6 +1673,29 @@ function drawStair(ctx, st, t) {
 function drawGearLink(ctx, a, b) {
   ctx.save(); ctx.strokeStyle = 'rgba(27,21,21,.35)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
   ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+}
+
+// a balance pair: both platforms hang from one chain running over two pulleys high above
+function drawBalance(ctx, a, b, travel) {
+  const top = Math.min(a.y0, b.y0) - travel - 150;
+  const ax = a.x + a.w / 2, bx = b.x + b.w / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(27,21,21,.55)'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(ax - a.w * 0.3, a.y); ctx.lineTo(ax, a.y - 46); ctx.lineTo(ax + a.w * 0.3, a.y);   // bridle
+  ctx.moveTo(bx - b.w * 0.3, b.y); ctx.lineTo(bx, b.y - 46); ctx.lineTo(bx + b.w * 0.3, b.y);
+  ctx.moveTo(ax, a.y - 46); ctx.lineTo(ax, top);
+  ctx.moveTo(bx, b.y - 46); ctx.lineTo(bx, top);
+  ctx.moveTo(ax, top - 16); ctx.lineTo(bx, top - 16);
+  ctx.stroke();
+  for (const x of [ax, bx]) {
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(x, top - 8, 15, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, top - 8, 9, 0, 7); ctx.stroke();
+    // spokes turn with the chain
+    const r = ((a.y - a.y0) / 15);
+    ctx.beginPath(); for (let k = 0; k < 3; k++) { const q = r + k * 2.094; ctx.moveTo(x, top - 8); ctx.lineTo(x + Math.cos(q) * 9, top - 8 + Math.sin(q) * 9); } ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawPlatform(ctx, p, t) {
@@ -1915,6 +2036,102 @@ function drawHazop(ctx, P, n, t, opt) {
 }
 
 
+// ---- grind.js ----
+// ============================================================
+// STAIRWAYS — metal grinding scrape & clatter, synthesised sample by sample.
+// Model: a heavy metal edge dragged over stone/metal. Stick-slip produces a dense,
+// irregular stream of micro-impacts (grains); each one excites the inharmonic modes
+// of the metal part. Under it a gritty hiss and a low body rumble. Sometimes it ends
+// with a clatter: one harder knock that leaves the part ringing.
+// Pure function (no WebAudio) so it can be rendered offline for checking.
+// ============================================================
+
+function synthGrind(sr, opt) {
+  opt = opt || {};
+  let seed = (opt.seed || 1) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pitch = opt.pitch || 1;
+  const dur = opt.dur || (0.75 + rnd() * 0.45);
+  const clatter = opt.clatter != null ? opt.clatter : rnd() < 0.55;
+  const tail = clatter ? 0.55 : 0.12;
+  const n = Math.floor((dur + tail) * sr);
+  const out = new Float32Array(n);
+
+  // metal modes (inharmonic), decay in seconds
+  const base = opt.dark ? [150, 260, 410, 620, 880] : [540, 1130, 1720, 2480, 3610, 5200, 8800, 10300];
+  const modes = base.map((f, i) => {
+    const fr = f * pitch * (0.94 + rnd() * 0.12);
+    const decay = (i < 2 ? 0.05 : 0.025) + rnd() * 0.03;
+    const r = Math.exp(-1 / (decay * sr));
+    const w = 2 * Math.PI * fr / sr;
+    return { a1: 2 * r * Math.cos(w), a2: -r * r, y1: 0, y2: 0, g: (opt.dark ? [1, .9, .6, .3, .15] : [1, 1, .85, .5, .3, .16, .07, .05])[i] * (1 - r) * 3,
+      ringR: Math.exp(-1 / ((0.35 + rnd() * 0.35) * sr)), w };
+  });
+
+  // envelope: quick drag-in, wobbly body, dies off at the end of the drag
+  const ph = rnd() * 2;
+  const env = t => {
+    if (t > dur) return 0;
+    const a = Math.min(1, t / 0.07), r = Math.min(1, (dur - t) / 0.12);
+    // the drag comes in uneven pushes, like the reference recording
+    const push = 0.45 + 0.55 * Math.max(0, Math.sin(t / (opt.stretch || 1) * (6.5 + ph) + ph * 3)) ** 0.6;
+    return a * r * push;
+  };
+
+  // grain stream (stick-slip): rate drifts, amplitudes heavy-tailed
+  let nextGrain = 0, grainLeft = 0, grainLen = 1, grainAmp = 0;
+  let tone = 0, hp = 0, hpPrev = 0, lp1 = 0, lp2 = 0, rum = 0, bp = 0;
+  const knockAt = clatter ? Math.floor((dur - 0.04 - rnd() * 0.08) * sr) : -1;
+
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, e = env(t);
+    // excitation
+    let x = 0;
+    if (e > 0) {
+      if (i >= nextGrain) {
+        const st = opt.stretch || 1, ts = t / st;   // stretched: slower grains and slower pushes
+        const rate = (35 + 70 * rnd()) / st * (0.7 + 0.6 * Math.sin(ts * 9.1 + 0.4) ** 2);
+        nextGrain = i + Math.max(1, Math.floor(sr * (-Math.log(1 - rnd()) / rate)));
+        grainLen = Math.floor(sr * (0.0015 + rnd() * 0.004)); grainLeft = grainLen;
+        const u = rnd(); grainAmp = (u < 0.15 ? 1 : u < 0.45 ? 0.3 : 0.06) * (0.6 + 0.4 * rnd());
+      }
+      if (grainLeft > 0) { x += (rnd() * 2 - 1) * grainAmp * (grainLeft / grainLen); grainLeft--; }
+      x *= e;
+    }
+    // final knock of the clatter
+    if (i === knockAt) for (const m of modes) { m.y1 += 0.012 * (rnd() * 0.6 + 0.7); }
+    if (knockAt > 0 && i === knockAt) for (const m of modes) m.ring = true;
+
+    // modes
+    let ym = 0;
+    for (const m of modes) {
+      const y = m.a1 * m.y1 + m.a2 * m.y2 + x * m.g;
+      m.y2 = m.y1; m.y1 = y; ym += y;
+      if (m.ring) { // after the knock: let the mode ring longer
+        const r = m.ringR; m.a1 = 2 * r * Math.cos(m.w); m.a2 = -r * r; m.ring = false;
+      }
+    }
+    // gritty broadband hiss (high-passed noise, chopped by the grain stream)
+    const nz = rnd() * 2 - 1;
+    hp = 0.86 * (hp + nz - hpPrev); hpPrev = nz;
+    const hiss = opt.dark ? 0 : hp * e * (0.003 + 0.25 * Math.abs(x));
+    // low body rumble 120–400 Hz
+    lp1 += (nz - lp1) * 0.06; lp2 += (lp1 - lp2) * 0.06; bp = lp1 - lp2;
+    rum = bp * e * (opt.dark ? 0.6 : 0.35);
+    const raw = ym * 0.55 + hiss * 0.5 + rum * 0.7;
+    tone += (raw - tone) * (opt.dark ? 0.12 : 0.55);            // gentle top roll-off (~6 kHz)
+    out[i] = tone;
+  }
+  // normalise to a fixed peak, soft-clip
+  // level set by the drag itself (RMS of the scrape part), so the final ring never dominates
+  let ss = 0; const m = knockAt > 0 ? knockAt : Math.floor(dur * sr); for (let i = 0; i < m; i++) ss += out[i] * out[i];
+  const rms = Math.sqrt(ss / m) || 1, k = (opt.dark ? 0.12 : 0.2) / rms;
+  const fo = Math.floor(0.04 * sr);
+  for (let i = 0; i < n; i++) { const v = out[i] * k * Math.min(1, (n - i) / fo); out[i] = v > 0.95 ? 0.95 + (v - 0.95) * 0.1 : v < -0.95 ? -0.95 + (v + 0.95) * 0.1 : v; }
+  return out;
+}
+
+
 // ---- audio.js ----
 // ============================================================
 // STAIRWAYS — procedural audio (WebAudio, no files)
@@ -1922,7 +2139,7 @@ function drawHazop(ctx, P, n, t, opt) {
 // ============================================================
 
 const Audio = (() => {
-  let ctx = null, master, sfxBus, musBus, verb, noiseBuf;
+  let ctx = null, master, sfxBus, musBus, verb, noiseBuf, grindBufs = null;
   let musicOn = false, musicTimer = null, ambient = null, machine = null;
   const vol = { music: 0.6, sfx: 0.8 };
 
@@ -1943,6 +2160,14 @@ const Audio = (() => {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // a few grinding takes, built in small slices so start-up stays smooth
+    grindBufs = []; let gi = 0;
+    const makeGrind = () => {
+      const data = synthGrind(ctx.sampleRate, { seed: 1000 + gi * 7919, pitch: 0.9 + (gi % 3) * 0.08, clatter: false, dark: true, dur: 1.65 + (gi % 3) * 0.18, stretch: 1.25 });
+      const b = ctx.createBuffer(1, data.length, ctx.sampleRate); b.getChannelData(0).set(data); grindBufs.push(b);
+      if (++gi < 6) setTimeout(makeGrind, 30);
+    };
+    setTimeout(makeGrind, 50);
     startAmbient();
   }
 
@@ -1982,31 +2207,17 @@ const Audio = (() => {
     land(hard) { noise(0.16, 260, 0.9, hard ? 0.5 : 0.3, 'lowpass', null, true); tone(70, 0.18, hard ? 0.35 : 0.2, 'sine'); },
     lock() { const t = ctx.currentTime; noise(0.3, 220, 1, 0.5, 'lowpass', t + 0.15, true); tone(70, 0.4, 0.3, 'square', t + 0.15); tone(1400, 0.08, 0.05, 'square', t + 0.32); },
     wrap() { const f = noise(0.35, 300, 0.7, 0.14, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.3); tone(220, 0.4, 0.04, 'sine'); },
-    // old metal dragging: a low friction bed plus a gritty rubbing layer on top. Once per revolution.
+    // metal grinding scrape & clatter (sampled-style, synthesised once in grind.js). Once per revolution.
     scrape(vol, pitch) {
-      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol)), p = pitch || 1, dur = 2.0;
-      const out = ctx.createGain(); out.gain.setValueAtTime(0, t);
-      out.gain.linearRampToValueAtTime(0.42 * v, t + 0.35); out.gain.linearRampToValueAtTime(0.3 * v, t + dur * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      out.connect(sfxBus); out.connect(verb);
-      // stick-slip: irregular amplitude jerks
-      const rough = ctx.createGain(); rough.gain.value = 0.7; rough.connect(out);
-      const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.setValueAtTime(9 * p, t); lfo.frequency.linearRampToValueAtTime(13 * p, t + dur);
-      const lg = ctx.createGain(); lg.gain.value = 0.3; lfo.connect(lg); lg.connect(rough.gain);
-      // 1) low friction bed
-      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.6;
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.6;
-      bp.frequency.setValueAtTime(240 * p, t); bp.frequency.linearRampToValueAtTime(380 * p, t + dur * 0.5); bp.frequency.linearRampToValueAtTime(280 * p, t + dur);
-      src.connect(bp); bp.connect(rough);
-      // 2) gritty metal-on-metal rubbing (mid-high, rasping, no pitched tone)
-      const src2 = ctx.createBufferSource(); src2.buffer = noiseBuf; src2.loop = true; src2.playbackRate.value = 1.3;
-      const bp2 = ctx.createBiquadFilter(); bp2.type = 'bandpass'; bp2.Q.value = 3;
-      bp2.frequency.setValueAtTime(1400 * p, t); bp2.frequency.linearRampToValueAtTime(2100 * p, t + dur * 0.5); bp2.frequency.linearRampToValueAtTime(1600 * p, t + dur);
-      const g2 = ctx.createGain(); g2.gain.value = 0.55;
-      const grit = ctx.createOscillator(); grit.type = 'square'; grit.frequency.value = 31 * p;   // fast grain of the rasp
-      const gg = ctx.createGain(); gg.gain.value = 0.35; grit.connect(gg); gg.connect(g2.gain);
-      src2.connect(bp2); bp2.connect(g2); g2.connect(rough);
-      lfo.start(t); grit.start(t); src.start(t, Math.random()); src2.start(t, Math.random());
-      for (const n of [lfo, grit, src, src2]) n.stop(t + dur + 0.05);
+      if (!grindBufs) return;
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      const src = ctx.createBufferSource(); src.buffer = grindBufs[Math.floor(Math.random() * grindBufs.length)];
+      src.playbackRate.value = Math.min(1, pitch || 1) * (0.95 + Math.random() * 0.08);
+      const g = ctx.createGain(); g.gain.value = 0.7 * v;
+      const send = ctx.createGain(); send.gain.value = 0.2;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.5;   // no screech, no highs
+      src.connect(lp); lp.connect(g); g.connect(sfxBus); g.connect(send); send.connect(verb);
+      src.start(t);
     },
     // air whoosh when a moving platform sets off (outward or back)
     swoosh(vol) {
@@ -2262,6 +2473,11 @@ const Audio = (() => {
     G.roomIdx = idx;
     const room = ROOMS[idx];
     G.world = createWorld(room, { memoryTaken: room.memory ? G.mem.has(room.memory.id) : true });
+    G.finale = null;
+    if (room.final && room.memory && G.mem.has(room.memory.id)) {   // fell during the finale: back on the clock tower, stairs joining again
+      const P = G.world.player; P.x = room.memory.x; P.y = room.memory.y + 45;
+      setTimeout(() => { if (G.world && G.world.room === room && !G.finale) startFinale(); }, 400);
+    }
     const tag = CHAPTERS[room.ch].tag;
     if (!G.bg || G.bgKey !== room.id) { G.bg = buildBackground(tag, room.w, 1000 + idx * 7); G.bgKey = room.id; G.bgTag = tag; }
     G.camX = clampCam(room.spawn.x - VIEW_W / 2);
@@ -2318,8 +2534,55 @@ const Audio = (() => {
     G.thought = null;
     if (G.state === 'intro') { showChapterCard(() => { G.state = 'play'; G.hintTimer = 0; }); return; }
     if (G.state === 'thought') {
-      if (ROOMS[G.roomIdx].final) { beginEnding(); return; }
       G.state = 'play';
+      if (ROOMS[G.roomIdx].final) startFinale();
+    }
+  }
+
+  // ---------------- finale: the stairs stop and join into one straight staircase ----------------
+  function startFinale() {
+    const w = G.world, P = w.player;
+    // where Hazop stands: the staircase starts just above his platform and climbs, shallow, out of the sky
+    const plat = w.platforms.find(p => p.id === P.plat) || w.platforms.reduce((a, b) => (a.y < b.y ? a : b));
+    const A = 12 * Math.PI / 180;                   // stair angle: line rising to the left
+    const dir = { x: -Math.cos(A), y: -Math.sin(A) };
+    const start = { x: plat.x + Math.min(plat.w - 30, 120), y: plat.y - 34 };
+    const order = w.stairs.slice().sort((a, b) => b.x - a.x);   // nearest first
+    let run = 0;
+    const moves = order.map((st, i) => {
+      const c = { x: start.x + dir.x * (run + st.len / 2), y: start.y + dir.y * (run + st.len / 2) };
+      run += st.len;
+      let a1 = A; while (a1 - st.ang > Math.PI) a1 -= 2 * Math.PI; while (st.ang - a1 > Math.PI) a1 += 2 * Math.PI;
+      if (Math.abs(a1 - st.ang) > Math.PI / 2) a1 += a1 > st.ang ? -Math.PI : Math.PI;   // a stair looks the same turned by 180°
+      return { st, x0: st.x, y0: st.y, a0: st.ang, x1: c.x, y1: c.y, a1, delay: 0.6 + i * 0.7, locked: false };
+    });
+    for (const st of w.stairs) { st.on = false; st.ride = false; st.link = null; st.kind = 'static'; st.angVel = 0; }
+    if (P.state === 'stair') { P.state = 'air'; P.stair = null; }
+    G.finale = { t: 0, moves, start, dir, total: run, A, merged: false, out: false };
+    Audio.sfx.timeup();
+  }
+  function updateFinale(dt) {
+    const F = G.finale, w = G.world, P = w.player;
+    F.t += dt;
+    if (!F.merged) {
+      let all = true;
+      for (const m of F.moves) {
+        const k = Math.max(0, Math.min(1, (F.t - m.delay) / 2.2)), e = k * k * (3 - 2 * k);
+        m.st.x = m.x0 + (m.x1 - m.x0) * e; m.st.y = m.y0 + (m.y1 - m.y0) * e; m.st.ang = m.a0 + (m.a1 - m.a0) * e;
+        if (k >= 1 && !m.locked) { m.locked = true; Audio.sfx.lock(); puff(m.st.x, m.st.y, 8, 'rgba(70,55,45,.45)', 160, 40); }
+        if (k < 1) all = false;
+      }
+      if (P.state === 'stair') { P.state = 'air'; P.stair = null; }   // nobody rides while they move
+      if (all) {   // one single straight staircase
+        F.merged = true;
+        const c = { x: F.start.x + F.dir.x * F.total / 2, y: F.start.y + F.dir.y * F.total / 2 };
+        w.stairs = [{ id: 'final', x: c.x, y: c.y, len: F.total, ang: F.A, angVel: 0, kind: 'static', on: false, dir: 1, speed: 0,
+          min: 0, max: 0, rest: F.A, steps: Math.round(F.total / 36), flip: false, ride: false, link: null, ang0: F.A }];
+        Audio.sfx.scrape(0.8, 0.8);
+      }
+    } else if (!F.out && P.y < 30) {
+      F.out = true;
+      fadeTo(1, () => { G.finale = null; G.fade = 0; G.fadeTarget = 0; beginEnding(); }, 0.6);
     }
   }
 
@@ -2362,6 +2625,7 @@ const Audio = (() => {
       const input = { move: moveInput(), jump: jumpPressed };
       if (input.move || input.jump) { if (!G.hasMoved) G.hasMoved = true; }
       jumpPressed = false;
+      if (G.finale) updateFinale(dt);
       while (acc >= PHYS.DT && steps < 8) {
         stepWorld(G.world, input, PHYS.DT);
         input.jump = false;
@@ -2378,20 +2642,31 @@ const Audio = (() => {
       Audio.machinery(lvl);
       // ratchet: a metallic click every few degrees of rotation / pixels of travel, louder when near
       const near = x => Math.max(0, 1 - Math.abs(x - (G.camX + VIEW_W / 2)) / 1100);
-      // one long metal scrape per full revolution of each turning stair (offset so they don't sync)
-      G.world.stairs.forEach((st, i) => {
-        if (st._rev == null) st._rev = (i * 2.399) % (2 * Math.PI);
-        st._rev += Math.abs(st.angVel || 0) * dt;
-        if (st._rev >= 2 * Math.PI) { st._rev -= 2 * Math.PI; const v = near(st.x); if (v > 0.05) Audio.sfx.scrape(v, 0.85 + (i % 4) * 0.08); }
+      // Only ONE stair makes the scrape: the turning stair closest to Hazop. The others turn in silence.
+      let lead = null, leadD = Infinity;
+      G.world.stairs.forEach(st => {
+        const turning = Math.abs(st.angVel || 0) > 0.02 && st.kind !== 'weight';
+        if (turning) { const d = Math.abs(st.x - G.world.player.x); if (d < leadD) { leadD = d; lead = st; } }
       });
-      // a whoosh each time a moving platform sets off (outward or back)
+      if (lead !== G.scrapeLead) { G.scrapeLead = lead; if (lead) lead._rev = Math.PI - 0.5 * Math.abs(lead.angVel); }   // new leader: sound after ~0.5 s
+      if (lead) {
+        lead._rev += Math.abs(lead.angVel) * dt;
+        if (lead._rev >= Math.PI) {   // a stair looks the same after half a turn, so that is its 'giro'
+          lead._rev -= Math.PI;
+          const v = near(lead.x); if (v > 0.05) Audio.sfx.scrape(v, 0.9);
+        }
+      }
+      // Same for moving platforms: one whoosh at a time, from the nearest platform that sets off.
+      let wv = 0;
       for (const p of G.world.platforms) {
         if (!p.move) continue;
         const sp = Math.hypot(p.mdx || 0, p.mdy || 0), dir = Math.sign((p.mdx || 0) + (p.mdy || 0));
         const moving = sp > 0.05;
-        if (moving && (!p._moving || dir !== p._dir)) { const v = near(p.x + p.w / 2); if (v > 0.05) Audio.sfx.swoosh(v); }
+        if (moving && (!p._moving || dir !== p._dir)) wv = Math.max(wv, near(p.x + p.w / 2));
         p._moving = moving; if (moving) p._dir = dir;
       }
+      G.whooshCd = Math.max(0, (G.whooshCd || 0) - dt);
+      if (wv > 0.05 && G.whooshCd <= 0) { Audio.sfx.swoosh(wv); G.whooshCd = 0.8; }
     } else Audio.machinery(0);
     // particles
     for (const p of G.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy = p.vy * 0.96 + (p.glow ? -10 : 30) * dt; }
@@ -2427,6 +2702,7 @@ const Audio = (() => {
         case 'tick': Audio.sfx.tick(); break;
         case 'timeup': Audio.sfx.timeup(); puff(e.x, e.y - 20, 6, 'rgba(255,250,220,.7)', 100, 60); break;
         case 'plate': Audio.sfx.plate(e.down); break;
+        case 'balstop': Audio.sfx.plate(true); break;
         case 'push': Audio.sfx.push(); break;
         case 'crateland': Audio.sfx.land(true); puff(e.x, e.y, 6, 'rgba(70,55,45,.5)', 120, 30); break;
         case 'crateback': break;
@@ -2815,6 +3091,7 @@ const Audio = (() => {
     ctx.save(); ctx.translate(-Math.round(cam), 0);
     if (room.exit) drawExitArrow(ctx, room.exit, room, w.exitOpen, G.t);
     for (const st of w.stairs) if (st.link) { const L = w.stairs.find(q => q.id === st.link); drawGearLink(ctx, st, L); L.gear = true; }
+    for (const B of w.balances || []) drawBalance(ctx, w.platforms.find(q => q.id === B.a), w.platforms.find(q => q.id === B.b), B.travel);
     for (const st of w.stairs) drawStair(ctx, st, G.t);
     for (const p of w.platforms) drawPlatform(ctx, p, G.t);
     for (const pl of w.plates || []) { const p = w.platforms.find(q => q.id === pl.plat); drawPlate(ctx, p.x + pl.dx, p.y, pl.w, pl.anim); }
@@ -2916,8 +3193,26 @@ const Audio = (() => {
   fadeTo(0, null, 0.8);
   requestAnimationFrame(frame);
 
+  // Self-update: an installed (home-screen) copy can keep serving an old cached page.
+  // On start, and whenever the app comes back to the foreground, ask the server for the
+  // current index.html bypassing the cache; if its version differs, reload onto it.
+  function checkForUpdate() {
+    if (typeof GAME_VERSION === 'undefined' || !/^https?:/.test(location.protocol) || !window.fetch) return;
+    if (G.state === 'play' && G.world) return;          // never interrupt a room in progress
+    fetch(location.pathname, { cache: 'reload' }).then(r => r.ok ? r.text() : '').then(html => {
+      const m = /<meta name="version" content="([^"]+)"/.exec(html);
+      if (!m || m[1] === GAME_VERSION) return;
+      let tried = null; try { tried = sessionStorage.getItem('stairways_upd'); } catch (e) { }
+      if (tried === m[1]) return;                        // already tried this one: avoid a reload loop
+      try { sessionStorage.setItem('stairways_upd', m[1]); save(); } catch (e) { }
+      location.reload();
+    }).catch(() => { });
+  }
+  setTimeout(checkForUpdate, 1500);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+
   // debug / test API
-  window.__stairways = { G, loadRoom, startNewGame, continueGame, ROOMS, setState: s => { G.state = s; } };
+  window.__stairways = { G, loadRoom, startNewGame, continueGame, ROOMS, startFinale: () => startFinale(), setState: s => { G.state = s; } };
 })();
 
 </script>
