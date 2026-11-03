@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.43 — built 2026-11-03 16:42 UTC -->
+<!-- Stairways v0.44 — built 2026-11-03 17:10 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.43">
+<meta name="version" content="0.44">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.43';
+const GAME_VERSION = '0.44';
 
 // ---- i18n.js ----
 // ============================================================
@@ -273,18 +273,23 @@ const ROOMS = [
     plan: ['M', 'X'],
   },
   {
-    // "The book": upside down. The high ledge can't be reached from the top of the stair you can jump on...
-    // but you can jump UNDER it: hang from the underside, walk off the end and you come round on top.
+    // "The book": three steps of thought. The book and a crate sit on a ledge you reach only from the top
+    // of the stair, and the top of the stair only from below it (hang under it and walk round its end).
+    // The way out is the lift, which rises while the pedal beside it is pressed: drop the crate on the lift,
+    // get on, and push the crate onto the pedal from the lift.
     id: 'PNT-3', ch: 0, w: 1800, h: 900,
     spawn: { x: 120, y: 760 },
     platforms: [
       { id: 'g1', x: 0, y: 760, w: 1800, h: 140 },
-      { id: 'pb', x: 1080, y: 400, w: 260 },
-      { id: 'ex', x: 1520, y: 400, w: 280, h: 60 },
+      { id: 'pb', x: 860, y: 380, w: 260 },
+      { id: 'lf', x: 1100, y: 760, w: 160, move: { dy: -510, speed: 170 } },
+      { id: 'ex', x: 1380, y: 250, w: 420, h: 26 },
     ],
-    stairs: [{ id: 's1', x: 760, y: 560, len: 480, ang: 0, kind: 'static' }],
-    memory: { id: 'pnt_book', x: 1220, y: 355 },
-    exit: { x: 1745, y: 140, w: 120, h: 270 },
+    stairs: [{ id: 's1', x: 560, y: 528, len: 460, ang: 0, kind: 'static' }],
+    crates: [{ id: 'c1', x: 1050, y: 380 }],
+    plates: [{ x: 1310, plat: 'g1', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'pnt_book', x: 940, y: 335 },
+    exit: { x: 1745, y: -10, w: 120, h: 270 },
   },
   {
     // The wall: a stair standing upright is a wall you can walk up. A cracked slab carries you only once.
@@ -321,23 +326,25 @@ const ROOMS = [
     exit: { x: 1945, y: 500, w: 120, h: 270 },
   },
   {
-    // "The diary" (end of chapter 1): everything learned so far. The diary sits up high, above the
-    // stair you can only reach from below; the way out is the bridge that only a lever crossing an odd
-    // number of times leaves open: walking back to the stair closes it, unless you jump the lever.
-    id: 'PNT-5', ch: 0, w: 1800, h: 900,
+    // "The diary" (end of chapter 1): one idea after another. Climb the wall to the crate; drop it on the
+    // pedal so the lift stays up; from the lift hang under the stair and walk round its end; from the top
+    // of the stair, the diary.
+    id: 'PNT-5', ch: 0, w: 2100, h: 900,
     spawn: { x: 120, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 1500, h: 140 },
-      { id: 'pd', x: 1150, y: 400, w: 220 },
-      { id: 'br', x: 1100, y: 400, w: 50, h: 26 },
-      { id: 'ge', x: 0, y: 400, w: 420, h: 26 },
-      { id: 'bb', x: 20, y: 400, w: 400, move: { dx: 420, speed: 500, u0: 1 } },
+      { id: 'g1', x: 0, y: 760, w: 1700, h: 140 },
+      { id: 'h1', x: 470, y: 300, w: 300 },
+      { id: 'lf', x: 1280, y: 760, w: 150, move: { dy: -160, speed: 170 } },
+      { id: 'pd', x: 1720, y: 225, w: 380, h: 26 },
     ],
-    stairs: [{ id: 's1', x: 820, y: 560, len: 460, ang: 0, kind: 'static' }],
-    levers: [{ x: 1250, plat: 'g1', type: 'pass', actions: [{ plat: 'bb', op: 'toggle' }] }],
-    memory: { id: 'pnt_diary', x: 1300, y: 355 },
-    exit: { x: -65, y: 140, w: 120, h: 270 },
-    plan: ['M', 'P:g1', 'P:bb', 'X'],
+    stairs: [
+      { id: 'w1', x: 420, y: 550, len: 420, ang: 90, kind: 'static' },
+      { id: 's1', x: 1430, y: 372, len: 460, ang: 0, kind: 'static' },
+    ],
+    crates: [{ id: 'c1', x: 690, y: 300 }],
+    plates: [{ x: 820, plat: 'g1', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'pnt_diary', x: 1820, y: 180 },
+    exit: { x: 2045, y: -35, w: 120, h: 270 },
   },
   {
     // "The dress": one crate, two jobs. It is the only step up to the dress, and the only weight
