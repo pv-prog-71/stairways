@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.29 — built 2026-11-02 20:58 UTC -->
+<!-- Stairways v0.30 — built 2026-11-02 21:44 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.29">
+<meta name="version" content="0.30">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.29';
+const GAME_VERSION = '0.30';
 
 // ---- i18n.js ----
 // ============================================================
@@ -2184,10 +2184,10 @@ const Audio = (() => {
   }
 
   // touch buttons (bottom-left: left/right, bottom-right: jump)
-  const BTN = { left: { x: 150, y: 770, r: 82 }, right: { x: 340, y: 770, r: 82 }, jump: { x: 1455, y: 770, r: 92 } };
+  const BTN = { left: { x: 150, y: 775, r: 80 }, right: { x: 370, y: 775, r: 80 }, jump: { x: 1455, y: 775, r: 80 } };
   function layoutButtons() {   // anchored to the real screen edges (uses the side bands on wide phones)
     const ex = Math.min(260, offX / scale);
-    BTN.left.x = 140 - ex; BTN.right.x = 325 - ex; BTN.jump.x = VIEW_W - 145 + ex;
+    BTN.left.x = 130 - ex; BTN.right.x = 355 - ex; BTN.jump.x = VIEW_W - 130 + ex;
   }
   function btnAt(x, y) {
     layoutButtons();
@@ -2851,7 +2851,13 @@ const Audio = (() => {
     for (const k of ['left', 'right', 'jump']) {
       const b = BTN[k];
       ctx.fillStyle = held[k] ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.38)';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      // solid triangles, same size, all sharing one centre line
+      const h = 62, w = 58;
+      ctx.beginPath();
+      if (k === 'left') { ctx.moveTo(b.x - w, b.y); ctx.lineTo(b.x + w * 0.75, b.y - h); ctx.lineTo(b.x + w * 0.75, b.y + h); }
+      else if (k === 'right') { ctx.moveTo(b.x + w, b.y); ctx.lineTo(b.x - w * 0.75, b.y - h); ctx.lineTo(b.x - w * 0.75, b.y + h); }
+      else { ctx.moveTo(b.x, b.y - h); ctx.lineTo(b.x + w * 1.05, b.y + h); ctx.lineTo(b.x - w * 1.05, b.y + h); }   // same top and bottom as the arrows
+      ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   }
