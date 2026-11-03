@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.38 — built 2026-11-03 08:12 UTC -->
+<!-- Stairways v0.39 — built 2026-11-03 09:04 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.38">
+<meta name="version" content="0.39">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.38';
+const GAME_VERSION = '0.39';
 
 // ---- i18n.js ----
 // ============================================================
@@ -1330,10 +1330,17 @@ function updateOnStair(w, P, move, dt, ev) {
   // carried velocity from rotation only (walking contribution kept small)
   P.stairTime = (P.stairTime || 0) + dt;
   if (P.jbuf > 0 && P.stairTime >= 0.25) {
-    const upness = clamp((-P.uy + 0.25) / 1.25, 0, 1);
-    const power = PHYS.JUMP * (0.3 + 0.7 * upness);
-    P.vx = P.vx + P.ux * power;
-    P.vy = P.vy + P.uy * power;
+    if (Math.abs(P.uy) < 0.5 && st.kind === 'static') {
+      // on a steep stair (a wall) the jump is a vault: up, pushing a little away from the wall;
+      // in the air Hazop can steer back over the top
+      P.vx = P.vx + P.ux * 240;
+      P.vy = Math.min(P.vy, 0) - PHYS.JUMP * 0.92;
+    } else {
+      const upness = clamp((-P.uy + 0.25) / 1.25, 0, 1);
+      const power = PHYS.JUMP * (0.3 + 0.7 * upness);
+      P.vx = P.vx + P.ux * power;
+      P.vy = P.vy + P.uy * power;
+    }
     P.state = 'air'; P.cool[st.id] = PHYS.STAIR_COOLDOWN; P.stair = null; P.jbuf = 0; P.airTime = 0;
     // in the air the body is upright again: shift so the feet stay continuous visually
     ev.push({ type: 'jump', fromStair: true });
