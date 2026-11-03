@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.39 — built 2026-11-03 09:04 UTC -->
+<!-- Stairways v0.43 — built 2026-11-03 16:42 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.39">
+<meta name="version" content="0.43">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.39';
+const GAME_VERSION = '0.43';
 
 // ---- i18n.js ----
 // ============================================================
@@ -255,35 +255,36 @@ const ROOMS = [
     exit: { x: 1945, y: 460, w: 120, h: 270 },
   },
   {
-    // "The brush": the lever starts/stops the lift to the exit (top left). The brush is at
-    // the far end, so you cross the lever twice: going there starts the lift, coming
-    // back stops it. Idea: jump over the lever on the way back.
+    // "The brush": the lever slides the bridge to the exit (top left) out or back. It counts only when
+    // walked right across, so going to the brush and coming back always leaves the bridge in.
+    // Idea: jump over the lever once (going or coming back).
     id: 'PNT-2', ch: 0, w: 1600, h: 900,
     spawn: { x: 100, y: 700 },
     platforms: [
       { id: 'g1', x: 0, y: 700, w: 420, h: 200 },
-      { id: 'ge', x: 0, y: 150, w: 560, h: 26 },
-      { id: 'pm', x: 600, y: 400, w: 120, move: { mode: 'loop', dy: -250, speed: 100, active: false, pause: 0.8 } },
+      { id: 'ge', x: 0, y: 400, w: 440, h: 26 },
+      { id: 'br', x: 40, y: 400, w: 400, move: { dx: 420, speed: 500 } },
       { id: 'p1', x: 860, y: 400, w: 540 },
     ],
     stairs: [{ id: 's1', x: 620, y: 560, len: 440, ang: -30, kind: 'static' }],
-    levers: [{ x: 1130, plat: 'p1', actions: [{ plat: 'pm', op: 'toggle' }] }],
+    levers: [{ x: 1130, plat: 'p1', type: 'pass', actions: [{ plat: 'br', op: 'toggle' }] }],
     memory: { id: 'pnt_brush', x: 1340, y: 355 },
-    exit: { x: -65, y: -90, w: 120, h: 250 },
+    exit: { x: -65, y: 140, w: 120, h: 270 },
     plan: ['M', 'X'],
   },
   {
-    id: 'PNT-3', ch: 0, w: 2000, h: 900,
-    spawn: { x: 120, y: 720 },
+    // "The book": upside down. The high ledge can't be reached from the top of the stair you can jump on...
+    // but you can jump UNDER it: hang from the underside, walk off the end and you come round on top.
+    id: 'PNT-3', ch: 0, w: 1800, h: 900,
+    spawn: { x: 120, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 720, w: 540, h: 180 },
-      { id: 'pb', x: 1090, y: 450, w: 150 },
-      { id: 'g2', x: 1120, y: 700, w: 280, h: 200 },
-      { id: 'g3', x: 1530, y: 640, w: 470, h: 260 },
+      { id: 'g1', x: 0, y: 760, w: 1800, h: 140 },
+      { id: 'pb', x: 1080, y: 400, w: 260 },
+      { id: 'ex', x: 1520, y: 400, w: 280, h: 60 },
     ],
-    stairs: [{ id: 's1', x: 800, y: 540, len: 460, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 }],
-    memory: { id: 'pnt_book', x: 1165, y: 408 },
-    exit: { x: 1945, y: 380, w: 120, h: 270 },
+    stairs: [{ id: 's1', x: 760, y: 560, len: 480, ang: 0, kind: 'static' }],
+    memory: { id: 'pnt_book', x: 1220, y: 355 },
+    exit: { x: 1745, y: 140, w: 120, h: 270 },
   },
   {
     // The wall: a stair standing upright is a wall you can walk up. A cracked slab carries you only once.
@@ -301,71 +302,61 @@ const ROOMS = [
     exit: { x: 1745, y: 80, w: 120, h: 270 },
   },
   {
-    id: 'PNT-T2', ch: 0, w: 2000, h: 900,
-    spawn: { x: 100, y: 720 },
-    platforms: [
-      { id: 'g1', x: 0, y: 720, w: 450, h: 180 },
-      { id: 'g2', x: 980, y: 520, w: 200 },
-      { id: 'g3', x: 1720, y: 600, w: 280, h: 300 },
-    ],
-    stairs: [
-      { id: 's1', x: 700, y: 560, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1440, y: 560, len: 440, ang: 0, kind: 'rot', on: true, dir: -1, speed: 30 },
-    ],
-    exit: { x: 1945, y: 340, w: 120, h: 270 },
-  },
-  {
-    id: 'PNT-4', ch: 0, w: 1600, h: 900,
+    // "The register": the lever sits on a cracked slab. Walking across it pulls the far bridge down,
+    // and the slab breaks behind you: there is no second try. Jump the lever while you are on the slab.
+    // The register is up on the wall's ledge: climb first.
+    id: 'PNT-4', ch: 0, w: 2000, h: 900,
     spawn: { x: 100, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 360, h: 140 },
-      { id: 'pm', x: 820, y: 560, w: 160 },
-      { id: 'pr', x: 1450, y: 330, w: 150 },
-      { id: 'g2', x: 1250, y: 800, w: 350, h: 100 },
+      { id: 'g1', x: 0, y: 760, w: 520, h: 140 },
+      { id: 'pr', x: 140, y: 380, w: 200 },
+      { id: 'cs', x: 520, y: 760, w: 360, crumble: true },
+      { id: 'is', x: 880, y: 760, w: 300, h: 140 },
+      { id: 'br', x: 1180, y: 760, w: 380, move: { dy: 340, speed: 700, u0: 0 } },
+      { id: 'ex', x: 1560, y: 760, w: 440, h: 140 },
     ],
-    stairs: [
-      { id: 's1', x: 560, y: 600, len: 420, ang: 180, kind: 'rot', on: true, dir: 1, speed: 28 },
-      { id: 's2', x: 1200, y: 420, len: 420, ang: 120, kind: 'rot', on: false, dir: 1, speed: 28 },
-    ],
-    levers: [{ x: 900, plat: 'pm', actions: [{ stair: 's2', on: true }] }],
-    memory: { id: 'pnt_register', x: 1530, y: 290 },
-    exit: { x: 1545, y: 560, w: 120, h: 240 },
-    plan: ['L0', 'M', 'X'],
+    stairs: [{ id: 'w1', x: 420, y: 560, len: 400, ang: 90, kind: 'static' }],
+    levers: [{ x: 700, plat: 'cs', type: 'pass', actions: [{ plat: 'br', op: 'toggle' }] }],
+    memory: { id: 'pnt_register', x: 240, y: 335 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
   },
   {
-    id: 'PNT-5', ch: 0, w: 1600, h: 900,
-    spawn: { x: 120, y: 820 },
+    // "The diary" (end of chapter 1): everything learned so far. The diary sits up high, above the
+    // stair you can only reach from below; the way out is the bridge that only a lever crossing an odd
+    // number of times leaves open: walking back to the stair closes it, unless you jump the lever.
+    id: 'PNT-5', ch: 0, w: 1800, h: 900,
+    spawn: { x: 120, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 820, w: 700, h: 80 },
-      { id: 'pd', x: 0, y: 500, w: 380 },
-      { id: 'pl', x: 1230, y: 470, w: 370 },
-      { id: 'g3', x: 1300, y: 820, w: 300, h: 80 },
+      { id: 'g1', x: 0, y: 760, w: 1500, h: 140 },
+      { id: 'pd', x: 1150, y: 400, w: 220 },
+      { id: 'br', x: 1100, y: 400, w: 50, h: 26 },
+      { id: 'ge', x: 0, y: 400, w: 420, h: 26 },
+      { id: 'bb', x: 20, y: 400, w: 400, move: { dx: 420, speed: 500, u0: 1 } },
     ],
-    stairs: [
-      { id: 's1', x: 970, y: 620, len: 420, ang: 200, kind: 'rot', on: true, dir: 1, speed: 28 },
-      { id: 's2', x: 700, y: 330, len: 400, ang: 90, kind: 'rot', on: false, dir: 1, speed: 22 },
-    ],
-    levers: [{ x: 1450, plat: 'pl', actions: [{ stair: 's1', invert: true }, { stair: 's2', invert: true, on: true }] }],
-    memory: { id: 'pnt_diary', x: 150, y: 458 },
-    exit: { x: 1545, y: 560, w: 120, h: 260 },
-    plan: ['L0', 'S:s2', 'M', 'X'],
+    stairs: [{ id: 's1', x: 820, y: 560, len: 460, ang: 0, kind: 'static' }],
+    levers: [{ x: 1250, plat: 'g1', type: 'pass', actions: [{ plat: 'bb', op: 'toggle' }] }],
+    memory: { id: 'pnt_diary', x: 1300, y: 355 },
+    exit: { x: -65, y: 140, w: 120, h: 270 },
+    plan: ['M', 'P:g1', 'P:bb', 'X'],
   },
-
-  // ---------------- CHAPTER 2 : EL BAILE ----------------
   {
-    id: 'BAL-1', ch: 1, w: 2200, h: 900,
-    spawn: { x: 100, y: 720 },
+    // "The dress": one crate, two jobs. It is the only step up to the dress, and the only weight
+    // for the pedal in the pit that raises the bridge. Once it drops in the pit it never comes out:
+    // use it as a step first.
+    id: 'BAL-1', ch: 1, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 720, w: 500, h: 180 },
-      { id: 'pm1', x: 560, y: 700, w: 180, move: { mode: 'loop', dx: 520, speed: 140, active: true } },
-      { id: 'g2', x: 1300, y: 720, w: 220, h: 180 },
-      { id: 'pm2', x: 1560, y: 760, w: 160, move: { mode: 'loop', dy: -380, speed: 110, active: false } },
-      { id: 'pd', x: 1760, y: 320, w: 440 },
+      { id: 'g1', x: 0, y: 760, w: 900, h: 140 },
+      { id: 'pf', x: 900, y: 804, w: 48, h: 96 },
+      { id: 'g2', x: 948, y: 760, w: 252, h: 140 },
+      { id: 'br', x: 1200, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'pd', x: 560, y: 560, w: 200 },
+      { id: 'ex', x: 1500, y: 760, w: 500, h: 140 },
     ],
-    levers: [{ x: 1410, plat: 'g2', actions: [{ plat: 'pm2', op: 'on' }] }],
-    memory: { id: 'bal_dress', x: 1900, y: 280 },
-    exit: { x: 2145, y: 100, w: 120, h: 230 },
-    plan: ['L0', 'M', 'X'],
+    crates: [{ id: 'c1', x: 300, y: 760 }],
+    plates: [{ x: 924, plat: 'pf', w: 40, actions: [{ plat: 'br', op: 'on' }] }],
+    memory: { id: 'bal_dress', x: 680, y: 515 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
   },
   {
     id: 'BAL-2', ch: 1, w: 1600, h: 900,
@@ -413,36 +404,47 @@ const ROOMS = [
     plan: ['Q0', 'X'],
   },
   {
-    id: 'BAL-3', ch: 1, w: 2400, h: 900,
-    spawn: { x: 100, y: 700 },
+    // "The tea": two pedals, one crate. The crate on the first pedal raises the first bridge, but the
+    // crate is needed on the second pedal too. The padlock lever (behind you, at the start) keeps a bridge
+    // exactly as it is: lock the first bridge up, then take the crate across.
+    id: 'BAL-3', ch: 1, w: 2100, h: 900,
+    spawn: { x: 180, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 700, w: 400, h: 200 },
-      { id: 'pm1', x: 460, y: 700, w: 160, move: { mode: 'loop', dy: -360, speed: 110, active: true } },
-      { id: 'pu', x: 700, y: 330, w: 400 },
-      { id: 'pt', x: 1640, y: 540, w: 200 },
-      { id: 'pm2', x: 1880, y: 600, w: 160, move: { mode: 'loop', dx: 300, speed: 120, active: true } },
-      { id: 'ge', x: 2240, y: 640, w: 160, h: 260 },
+      { id: 'g1', x: 0, y: 760, w: 760, h: 140 },
+      { id: 'b1', x: 760, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'is', x: 1060, y: 760, w: 300, h: 140 },
+      { id: 'b2', x: 1360, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'ex', x: 1660, y: 760, w: 440, h: 140 },
+      { id: 'pt', x: 1150, y: 560, w: 160 },
     ],
-    stairs: [{ id: 's1', x: 1350, y: 520, len: 440, ang: 90, kind: 'rot', on: false, dir: 1, speed: 30 }],
-    levers: [{ x: 900, plat: 'pu', actions: [{ stair: 's1', on: true }] }],
-    memory: { id: 'bal_tea', x: 1740, y: 500 },
-    exit: { x: 2345, y: 380, w: 120, h: 270 },
-    plan: ['L0', 'M', 'X'],
+    crates: [{ id: 'c1', x: 420, y: 760 }],
+    plates: [
+      { x: 690, plat: 'g1', actions: [{ plat: 'b1', op: 'on' }] },
+      { x: 1250, plat: 'is', actions: [{ plat: 'b2', op: 'on' }] },
+    ],
+    levers: [{ x: 60, plat: 'g1', actions: [{ plat: 'b1', lock: true }] }],
+    memory: { id: 'bal_tea', x: 1230, y: 515 },
+    exit: { x: 2045, y: 500, w: 120, h: 270 },
+    plan: ['C:c1@690', 'L0', 'C:c1@1250', 'M', 'X'],
   },
   {
-    id: 'BAL-4', ch: 1, w: 2000, h: 900,
-    spawn: { x: 100, y: 780 },
+    // "The tie": a seesaw tips under Hazop's weight, so its high end is never high while he stands on it.
+    // Tip it, step off onto the padlock lever while it is still tipped: it stays locked that way. Then climb it.
+    id: 'BAL-4', ch: 1, w: 1900, h: 900,
+    spawn: { x: 100, y: 640 },
     platforms: [
-      { id: 'g1', x: 0, y: 780, w: 380, h: 120 },
-      { id: 'pt', x: 1460, y: 330, w: 200 },
-      { id: 'pe', x: 1720, y: 600, w: 280, h: 300 },
+      { id: 'g1', x: 0, y: 640, w: 400, h: 260 },
+      { id: 'pl', x: 400, y: 790, w: 70, h: 110 },
+      { id: 'pt', x: 1060, y: 420, w: 220 },
+      { id: 'pe', x: 1420, y: 360, w: 480, h: 540 },
     ],
     stairs: [
-      { id: 's1', x: 620, y: 640, len: 440, ang: 0, kind: 'weight', rest: 0, min: -28, max: 28 },
-      { id: 's2', x: 1160, y: 480, len: 440, ang: 0, kind: 'weight', rest: 0, min: -28, max: 28 },
+      { id: 's1', x: 720, y: 640, len: 540, ang: 0, kind: 'weight', rest: 0, min: -28, max: 28, gain: 3 },
     ],
-    memory: { id: 'bal_tie', x: 1560, y: 290 },
-    exit: { x: 1945, y: 340, w: 120, h: 270 },
+    levers: [{ x: 440, plat: 'pl', actions: [{ stair: 's1', lock: true }] }],
+    memory: { id: 'bal_tie', x: 1170, y: 375 },
+    exit: { x: 1845, y: 100, w: 120, h: 270 },
+  
   },
   {
     // "Only once": three rusty one-way levers in a row, two bridges. Order matters, and
@@ -466,44 +468,38 @@ const ROOMS = [
     exit: { x: 1545, y: 440, w: 120, h: 270 },
   },
   {
-    id: 'BAL-5', ch: 1, w: 1900, h: 900,
-    spawn: { x: 100, y: 760 },
+    // "The photo": the hourglass lever raises the bridge only for a few seconds: enough to reach the photo,
+    // not to come back. The padlock lever behind you can keep the bridge up for good, if you lock it in time.
+    id: 'BAL-5', ch: 1, w: 2000, h: 900,
+    spawn: { x: 300, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 420, h: 140 },
-      { id: 'br', x: 440, y: 1160, w: 300, move: { dy: -400, speed: 220 } },
-      { id: 'g2', x: 760, y: 760, w: 300, h: 140 },
-      { id: 'pp', x: 1620, y: 470, w: 280 },
-      { id: 'px', x: 0, y: 330, w: 420 },
-    ],
-    stairs: [
-      { id: 's1', x: 1330, y: 540, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 700, y: 400, len: 400, ang: 0, kind: 'rot', on: true, dir: -1, speed: 26 },
+      { id: 'g1', x: 0, y: 760, w: 900, h: 140 },
+      { id: 'br', x: 900, y: 1100, w: 420, move: { dy: -340, speed: 700 } },
+      { id: 'is', x: 1320, y: 760, w: 680, h: 140 },
     ],
     levers: [
-      { x: 300, plat: 'g1', actions: [{ plat: 'br', op: 'toggle' }] },
-      { x: 1800, plat: 'pp', actions: [{ stair: 's1', invert: true }] },
+      { x: 820, plat: 'g1', type: 'timer', time: 5, actions: [{ plat: 'br', op: 'on' }] },
+      { x: 60, plat: 'g1', actions: [{ plat: 'br', lock: true }] },
     ],
-    memory: { id: 'bal_photo', x: 1740, y: 430 },
-    exit: { x: -65, y: 80, w: 120, h: 260 },
-    plan: ['L0', 'M', 'X'],
+    memory: { id: 'bal_photo', x: 1900, y: 715 },
+    exit: { x: -65, y: 500, w: 120, h: 270 },
+    plan: ['L0', 'L1', 'M', 'X'],
   },
-
-  // ---------------- CHAPTER 3 : JUGUETES ----------------
   {
-    id: 'JGT-1', ch: 2, w: 2000, h: 900,
-    spawn: { x: 100, y: 700 },
+    // "The note": the pedal sends the lift up while something weighs on it. The crate sits on the lift.
+    // Push it off onto the pedal... from the lift, or the lift leaves without you.
+    id: 'JGT-1', ch: 2, w: 1700, h: 900,
+    spawn: { x: 100, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 700, w: 360, h: 200 },
-      { id: 'pn', x: 780, y: 470, w: 70 },
-      { id: 'ge', x: 1720, y: 700, w: 280, h: 200 },
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'lf', x: 700, y: 760, w: 200, move: { dy: -420, speed: 160 } },
+      { id: 'g2', x: 900, y: 760, w: 300, h: 140 },
+      { id: 'top', x: 900, y: 340, w: 800, h: 26 },
     ],
-    stairs: [
-      { id: 's1', x: 560, y: 560, len: 400, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1080, y: 460, len: 400, ang: 90, kind: 'rot', on: true, dir: -1, speed: 30 },
-      { id: 's3', x: 1500, y: 560, len: 400, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30 },
-    ],
-    memory: { id: 'jgt_note', x: 815, y: 430 },
-    exit: { x: 1945, y: 420, w: 120, h: 280 },
+    crates: [{ id: 'c1', x: 820, y: 760 }],
+    plates: [{ x: 960, plat: 'g2', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'jgt_note', x: 1300, y: 295 },
+    exit: { x: 1645, y: 80, w: 120, h: 270 },
   },
   {
     id: 'JGT-2', ch: 2, w: 1600, h: 900,
@@ -538,36 +534,55 @@ const ROOMS = [
     exit: { x: 1745, y: 440, w: 120, h: 270 },
   },
   {
-    id: 'JGT-3', ch: 2, w: 1600, h: 900,
-    spawn: { x: 100, y: 820 },
-    platforms: [
-      { id: 'g1', x: 0, y: 820, w: 400, h: 80 },
-      { id: 'p1', x: 830, y: 560, w: 140 },
-      { id: 'pt', x: 1400, y: 340, w: 200 },
-    ],
-    stairs: [
-      { id: 's1', x: 600, y: 640, len: 400, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1150, y: 420, len: 400, ang: 90, kind: 'rot', on: false, dir: 1, speed: 30 },
-    ],
-    levers: [{ x: 900, plat: 'p1', actions: [{ stair: 's2', on: true }] }],
-    memory: { id: 'jgt_toy', x: 1500, y: 300 },
-    exit: { x: 1545, y: 90, w: 120, h: 260 },
-    plan: ['L0', 'M', 'X'],
-  },
-  {
-    id: 'JGT-4', ch: 2, w: 2000, h: 900,
+    // "The toy": the crate rolls along the shelf and drops through the first open trapdoor.
+    // Each padlocked lever on the floor opens the trapdoor right above it, for good. Only the last one
+    // is over the pedestal with the pedal: jump over the other two levers.
+    id: 'JGT-3', ch: 2, w: 2000, h: 900,
     spawn: { x: 80, y: 760 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 300, h: 140 },
-      { id: 'pm1', x: 330, y: 760, w: 140, move: { mode: 'loop', dx: 300, speed: 120, active: true } },
-      { id: 'g2', x: 800, y: 760, w: 260, h: 140 },
-      { id: 'pg', x: 760, y: 400, w: 240 },
-      { id: 'ge', x: 1640, y: 640, w: 360, h: 260 },
+      { id: 'f', x: 0, y: 760, w: 1500, h: 140 },
+      { id: 'pe', x: 1200, y: 700, w: 80, h: 60 },
+      { id: 'st', x: 150, y: 640, w: 130 },
+      { id: 's0', x: 300, y: 520, w: 300 },
+      { id: 't1', x: 600, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's1', x: 680, y: 520, w: 220 },
+      { id: 't2', x: 900, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's2', x: 980, y: 520, w: 220 },
+      { id: 't3', x: 1200, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's3', x: 1280, y: 520, w: 120 },
+      { id: 'br', x: 1500, y: 1100, w: 260, move: { dy: -340, speed: 600 } },
+      { id: 'ex', x: 1760, y: 760, w: 240, h: 140 },
     ],
-    stairs: [{ id: 's1', x: 1300, y: 560, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 }],
-    levers: [{ x: 950, plat: 'g2', actions: [{ stair: 's1', invert: true }] }],
-    memory: { id: 'jgt_guitar', x: 830, y: 360 },
-    exit: { x: 1945, y: 380, w: 120, h: 270 },
+  
+    crates: [{ id: 'c1', x: 420, y: 520 }],
+    plates: [{ x: 1240, plat: 'pe', w: 60, actions: [{ plat: 'br', op: 'on' }] }],
+    levers: [
+      { x: 640, plat: 'f', type: 'once', actions: [{ plat: 't1', op: 'on' }] },
+      { x: 940, plat: 'f', type: 'once', actions: [{ plat: 't2', op: 'on' }] },
+      { x: 1310, plat: 'f', type: 'once', actions: [{ plat: 't3', op: 'on' }] },
+    ],
+    memory: { id: 'jgt_toy', x: 1340, y: 475 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
+    scripted: true,   // tools/script_jgt3.js
+  },
+  {
+    // "The guitar": alone on the chain plates, Hazop only sinks; with the crate on the other plate, his plate
+    // shoots up empty before he can step on it. The hourglass padlock freezes the chain for a while:
+    // freeze it, load the crate, step on your plate, and wait for the hourglass to run out.
+    id: 'JGT-4', ch: 2, w: 1900, h: 900,
+    spawn: { x: 170, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 640, h: 140 },
+      { id: 'pa', x: 640, y: 760, w: 180, balance: { with: 'pb', travel: 250, speed: 120 } },
+      { id: 'm', x: 820, y: 760, w: 300, h: 140 },
+      { id: 'pb', x: 1120, y: 760, w: 180 },
+      { id: 'h', x: 1360, y: 520, w: 540, h: 380 },
+    ],
+    crates: [{ id: 'c1', x: 380, y: 760 }],
+    levers: [{ x: 50, plat: 'g1', type: 'timer', time: 8, actions: [{ plat: 'pa', lock: true }] }],
+    memory: { id: 'jgt_guitar', x: 1500, y: 475 },
+    exit: { x: 1845, y: 260, w: 120, h: 270 },
+    scripted: true,   // tools/script_jgt4.js
   },
   {
     // "The step": the way out is a little too high. The block sits on a shelf:
@@ -585,7 +600,8 @@ const ROOMS = [
   {
     // "The travelling cube": the plate that holds the exit bridge is on an island.
     // Load the block onto the ferry, travel with it, push it off onto the plate.
-    id: 'JGT-C', ch: 2, w: 2200, h: 900,
+    id: 'JGT-C', scripted: true,   // tools/script_jgtc.js
+    ch: 2, w: 2200, h: 900,
     spawn: { x: 100, y: 700 },
     platforms: [
       { id: 'g1', x: 0, y: 700, w: 600, h: 200 },
@@ -617,30 +633,30 @@ const ROOMS = [
     plan: ['L0', 'X'],
   },
   {
-    id: 'JGT-5', ch: 2, w: 2800, h: 900,
-    spawn: { x: 100, y: 760 },
+    // "The plate" (end of chapter 3): one crate, three jobs in a row. On the pedal it holds the bridge up;
+    // the padlock keeps the bridge up once the crate leaves; over the trapdoor it becomes the weight that
+    // lifts Hazop on the chain plate, once he is standing on it.
+    id: 'JGT-5', ch: 2, w: 2300, h: 900,
+    spawn: { x: 170, y: 600 },
     platforms: [
-      { id: 'g1', x: 0, y: 760, w: 400, h: 140 },
-      { id: 'p1', x: 860, y: 520, w: 200 },
-      { id: 'pa', x: 1100, y: 1000, w: 300, move: { dy: -480, speed: 220 } },
-      { id: 'p2', x: 1440, y: 520, w: 200 },
-      { id: 'pp', x: 2180, y: 330, w: 220 },
-      { id: 'pe', x: 2480, y: 600, w: 320, h: 300 },
+      { id: 'g1', x: 0, y: 600, w: 760, h: 300 },
+      { id: 'b1', x: 760, y: 940, w: 320, move: { dy: -340, speed: 600 } },
+      { id: 'is', x: 1080, y: 600, w: 300, h: 26 },
+      { id: 'td', x: 1380, y: 600, w: 120, move: { dy: 500, speed: 1400 } },
+      { id: 'pa', x: 1380, y: 780, w: 120, balance: { with: 'pb', travel: 170, speed: 110 } },
+      { id: 'pb', x: 1640, y: 780, w: 180 },
+      { id: 'ex', x: 1900, y: 560, w: 400, h: 340 },
     ],
-    stairs: [
-      { id: 's1', x: 620, y: 560, len: 400, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
-      { id: 's2', x: 1880, y: 460, len: 440, ang: 90, kind: 'rot', on: false, dir: -1, speed: 30 },
-    ],
+    crates: [{ id: 'c1', x: 420, y: 600 }],
+    plates: [{ x: 700, plat: 'g1', actions: [{ plat: 'b1', op: 'on' }] }],
     levers: [
-      { x: 960, plat: 'p1', actions: [{ plat: 'pa', op: 'toggle' }] },
-      { x: 1560, plat: 'p2', actions: [{ stair: 's2', on: 'toggle' }] },
+      { x: 50, plat: 'g1', actions: [{ plat: 'b1', lock: true }] },
+      { x: 1760, plat: 'pb', type: 'once', actions: [{ plat: 'td', op: 'on' }] },
     ],
-    memory: { id: 'jgt_plate', x: 2290, y: 290 },
-    exit: { x: 2745, y: 340, w: 120, h: 270 },
-    plan: ['L0', 'L1', 'M', 'X'],
+    memory: { id: 'jgt_plate', x: 2100, y: 515 },
+    exit: { x: 2245, y: 300, w: 120, h: 270 },
+    plan: ['C:c1@700', 'L0', 'C:c1@1440', 'P:pb', 'M', 'X'],
   },
-
-  // ---------------- CHAPTER 4 : LA BOTELLA ----------------
   {
     id: 'BTL-1', ch: 3, w: 2000, h: 900,
     spawn: { x: 100, y: 760 },
@@ -907,6 +923,7 @@ function createWorld(room, opts) {
       ride: !!s.ride,                 // rotates only while Hazop is on it
       link: s.link || null, ratio: s.ratio != null ? s.ratio : -1, // geared to another stair
       ang0: (s.ang || 0) * DEG,
+      gain: s.gain || 1,
     });
   }
   // geared stairs are updated after the stair they follow
@@ -951,6 +968,7 @@ function invertAction(a) {
   if (a.on === true) r.on = false; else if (a.on === false) r.on = true;
   if (a.op === 'on') r.op = 'off'; else if (a.op === 'off') r.op = 'on';
   if (a.dir) { delete r.dir; r.invert = true; }
+  if (a.lock != null) r.lock = !a.lock;
   return r; // 'toggle' and 'invert' are their own inverse
 }
 function runActions(w, actions, undo) {
@@ -962,11 +980,17 @@ function runActions(w, actions, undo) {
       if (a.on === 'toggle') st.on = !st.on; else if (a.on != null) st.on = a.on;
       if (a.invert) st.dir = -st.dir;
       if (a.dir) st.dir = a.dir;
+      if (a.lock != null) { st.locked = a.lock; st.angVel = 0; }   // padlock on a seesaw: it stays at the angle it has
     }
     if (a.plat != null) {
       const p = platById(w, a.plat);
+      if (p && p.balD != null && a.lock != null) {   // padlock on a balance pair: the chain stops
+        for (const B of w.balances) if (B.a === p.id || B.b === p.id) B.locked = a.lock;
+        continue;
+      }
       if (!p || !p.move) continue;
       const m = p.move;
+      if (a.lock != null) { m.locked = a.lock; continue; }   // padlock: the platform stays where it is
       if (m.mode === 'toggle') {
         if (a.op === 'toggle' || !a.op) m.target = m.target > 0.5 ? 0 : 1;
         else if (a.op === 'on') m.target = 1; else if (a.op === 'off') m.target = 0;
@@ -990,9 +1014,10 @@ function stepWorld(w, input, dt) {
     const A = platById(w, B.a), C = platById(w, B.b);
     const load = q => {
       let n = P.state === 'ground' && P.plat === q.id ? 1 : 0;
-      for (const c of w.platforms) if (c.kind === 'crate' && Math.abs(c.y + c.h - q.y) < 3 && c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2) n += 2;
+      for (const c of w.platforms) if (c.kind === 'crate' && c.sup === q.id) n += 2;   // only a crate actually resting on it
       return n;
     };
+    if (B.locked) { A.balD = B.d; C.balD = -B.d; continue; }
     const diff = load(A) - load(C);
     const target = diff > 0 ? B.travel : diff < 0 ? -B.travel : 0;
     const step = B.speed * dt;
@@ -1006,7 +1031,7 @@ function stepWorld(w, input, dt) {
   for (const p of w.platforms) {
     const ox = p.x, oy = p.y;
     const m = p.move;
-    if (m) {
+    if (m && !m.locked) {
       const L = Math.hypot(m.dx, m.dy) || 1;
       const du = (m.speed / L) * dt;
       if (m.mode === 'toggle') {
@@ -1038,11 +1063,14 @@ function stepWorld(w, input, dt) {
       const riding = P.state === 'stair' && P.stair === st.id;
       st.angVel = st.on && (!st.ride || riding) ? st.dir * st.speed : 0;
       st.ang += st.angVel * dt;
+    } else if (st.kind === 'weight' && st.locked) {
+      st.angVel = 0;
     } else if (st.kind === 'weight') {
       let torque = 0;
-      if (P.state === 'stair' && P.stair === st.id) torque = (P.x - st.x) * 0.0045; // px -> rad/s^2
-      const spring = (st.rest - st.ang) * 0.8;
-      st.angVel += (torque + spring - st.angVel * 1.4) * dt;
+      const g = st.gain;                       // 'gain' > 1: a lighter seesaw that answers at once
+      if (P.state === 'stair' && P.stair === st.id) torque = (P.x - st.x) * 0.0045 * g * g; // px -> rad/s^2
+      const spring = (st.rest - st.ang) * 0.8 * g;
+      st.angVel += (torque + spring - st.angVel * 1.4 * g) * dt;
       st.ang += st.angVel * dt;
       if (st.ang < st.min) { st.ang = st.min; st.angVel = 0; }
       if (st.ang > st.max) { st.ang = st.max; st.angVel = 0; }
@@ -1066,6 +1094,7 @@ function stepWorld(w, input, dt) {
       if (q === c || q.gone) continue;
       if (c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2 && Math.abs((c.y + c.h) - q.y) < 2) { sup = q; break; }
     }
+    c.sup = sup ? sup.id : null;
     if (sup) { c.cvy = 0; c.x += sup.mdx || 0; c.y = sup.y - c.h; }
     else {
       c.cvy = Math.min(PHYS.MAX_FALL, c.cvy + PHYS.G * dt);
@@ -1100,7 +1129,17 @@ function stepWorld(w, input, dt) {
       if (L.timer <= 0) { L.timer = 0; L.state = false; runActions(w, L.actions, true); ev.push({ type: 'timeup', x: lx, y: ly }); }
     }
     const usable = !L.locked && !(L.type === 'timer' && L.timer > 0);
-    if (inside && !L.inside && L.cool <= 0 && usable) {
+    let fire = inside && !L.inside && L.cool <= 0 && usable;
+    if (L.type === 'pass') {
+      // a 'pass' lever counts only when Hazop walks right across it: stepping on and backing off does nothing
+      fire = false;
+      const inZone = Math.abs(P.x - lx) < 24 && P.y > ly - 250 && P.y < ly + 6;
+      if (inZone && !L.zone) { L.entry = Math.sign((L.px != null ? L.px : P.x) - lx) || -1; L.touched = false; }
+      if (inZone && (inside || w.room._noSkip)) L.touched = true;   // _noSkip: test only (jumping over still counts)
+      if (!inZone && L.zone && L.touched && Math.sign(P.x - lx) !== L.entry) fire = true;
+      L.zone = inZone; L.px = P.x;
+    }
+    if (fire) {
       L.cool = 0.7;
       L.state = !L.state; L.hits++;
       runActions(w, L.actions, !L.state); // switched back = undo
@@ -1309,7 +1348,7 @@ function updateOnStair(w, P, move, dt, ev) {
   if (move) ds = P.lockSign * PHYS.STAIR_WALK * dt;
   const lim = st.len / 2 - 10;
   // walking past the end of a stair wraps Hazop around it onto the other face
-  if (move && Math.sign(ds) === Math.sign(P.s) && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0) {
+  if (move && !w.room._noWrap && Math.sign(ds) === Math.sign(P.s) && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0) {
     P.side = -P.side; P.lockSign = -P.lockSign; P.facing = -P.facing; ds = 0;
     ev.push({ type: 'wrap', x: P.x, y: P.y });
   }
@@ -1773,8 +1812,23 @@ function drawLever(ctx, x, y, anim, L) {
   const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
   ctx.strokeStyle = COL.ink; ctx.lineWidth = 5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
-  ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(Math.cos(a) * 30, Math.sin(a) * 30, 7, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(0, 0, 6, Math.PI, 0); ctx.fill();
+  if (L.actions && L.actions.some(q => q.lock != null)) {   // padlock lever: the knob is a padlock, shut when on
+    ctx.translate(Math.cos(a) * 30, Math.sin(a) * 30);
+    drawPadlock(ctx, 0, 0, 1, anim > 0.5);
+  } else { ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(Math.cos(a) * 30, Math.sin(a) * 30, 7, 0, 7); ctx.fill(); }
+  ctx.restore();
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 6, Math.PI, 0); ctx.fill(); ctx.restore();
+}
+
+function drawPadlock(ctx, x, y, k, shut, col) {
+  col = col || COL.ink; const hole = col === COL.ink ? '#f4f0dc' : COL.ink;
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (shut) ctx.arc(0, -5, 6, Math.PI, 0); else { ctx.arc(0, -9, 6, Math.PI, 0.1); }
+  ctx.stroke();
+  ctx.fillStyle = col; ctx.fillRect(-9, -5, 18, 14);
+  ctx.fillStyle = hole; ctx.fillRect(-1.5, 0, 3, 5);
   ctx.restore();
 }
 
@@ -3101,6 +3155,10 @@ const Audio = (() => {
     for (const B of w.balances || []) drawBalance(ctx, w.platforms.find(q => q.id === B.a), w.platforms.find(q => q.id === B.b), B.travel);
     for (const st of w.stairs) drawStair(ctx, st, G.t);
     for (const p of w.platforms) drawPlatform(ctx, p, G.t);
+    for (const st of w.stairs) if (st.locked) drawPadlock(ctx, st.x, st.y - 30, 1.1, true);
+    for (const B of w.balances || []) if (B.locked) { const A = w.platforms.find(q => q.id === B.a), C = w.platforms.find(q => q.id === B.b);
+      drawPadlock(ctx, (A.x + A.w / 2 + C.x + C.w / 2) / 2, Math.min(A.y0, C.y0) - B.travel - 150, 1.2, true); }
+    for (const p of w.platforms) if (p.move && p.move.locked && !p.gone) drawPadlock(ctx, p.x + p.w / 2, p.y + 12, 0.75, true, '#f4f0dc');
     for (const pl of w.plates || []) { const p = w.platforms.find(q => q.id === pl.plat); drawPlate(ctx, p.x + pl.dx, p.y, pl.w, pl.anim); }
     for (const L of w.levers) { const p = w.platforms.find(q => q.id === L.plat); drawLever(ctx, p.x + L.dx, p.y, L.anim, L); }
     if (w.mem && !w.memoryTaken) drawMemory(ctx, w.mem.x, w.mem.y, room.memory.id, G.t);
