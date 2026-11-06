@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.45 — built 2026-11-06 18:15 UTC -->
+<!-- Stairways v0.47 — built 2026-11-06 18:50 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.45">
+<meta name="version" content="0.47">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.45';
+const GAME_VERSION = '0.47';
 
 // ---- i18n.js ----
 // ============================================================
@@ -897,7 +897,7 @@ function createWorld(room, opts) {
         u: m.u0 || 0, target: m.u0 || 0, active: !!m.active, dir: 1, pause: m.pause || 0, wait: 0,
       } : null,
       kind: p.kind || 'slab',
-      crumble: !!p.crumble, touched: false, shake: 0, gone: false, fallY: 0,
+      crumble: !!p.crumble, crumbleTime: p.crumbleTime || 0, ctime: 0, touched: false, shake: 0, gone: false, fallY: 0,
       balD: p.balance || room.platforms.some(q => q.balance && q.balance.with === p.id) ? 0 : null,
     });
   }
@@ -1089,7 +1089,10 @@ function stepWorld(w, input, dt) {
     if (!p.crumble || p.gone) continue;
     const onIt = P.state === 'ground' && P.plat === p.id;
     if (onIt) p.touched = true;
-    else if (p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+    if (p.touched && p.crumbleTime && p.shake === 0) {          // timed: it goes even if Hazop stays on it
+      p.ctime = (p.ctime || 0) + dt;
+      if (p.ctime >= p.crumbleTime) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+    } else if (!onIt && p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
     if (p.shake > 0) { p.shake += dt; if (p.shake > 0.45) { p.gone = true; ev.push({ type: 'crumbled', x: p.x + p.w / 2, y: p.y }); } }
   }
   // --- crates: gravity, resting, carried by movers ---
@@ -1767,7 +1770,9 @@ function drawPlatform(ctx, p, t) {
 }
 
 function drawCrumbling(ctx, p, t) {
-  const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : 0;
+  // timed slabs tremble more and more while the time runs out
+  const pre = p.crumbleTime && p.touched && p.shake === 0 ? Math.min(1, (p.ctime || 0) / p.crumbleTime) : 0;
+  const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : pre > 0 ? Math.sin(t * 70) * 1.6 * pre : 0;
   ctx.save(); ctx.translate(sh, p.shake > 0 ? p.shake * 6 : 0);
   ctx.fillStyle = 'rgba(40,25,20,.15)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, p.h);
   ctx.fillStyle = '#3a2f2b'; ctx.fillRect(p.x, p.y, p.w, p.h);
@@ -1777,6 +1782,11 @@ function drawCrumbling(ctx, p, t) {
   ctx.moveTo(p.x + 6, p.y + p.h * 0.5); ctx.lineTo(p.x + 20, p.y + p.h * 0.45);
   ctx.stroke();
   ctx.fillStyle = '#5a4c44'; ctx.fillRect(p.x, p.y, p.w, 3);
+  if (p.crumbleTime) {   // a small hourglass marks the timed ones
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+    ctx.fillStyle = '#e8dcc0'; ctx.beginPath();
+    ctx.moveTo(cx - 5, cy - 7); ctx.lineTo(cx + 5, cy - 7); ctx.lineTo(cx, cy); ctx.lineTo(cx + 5, cy + 7); ctx.lineTo(cx - 5, cy + 7); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -2389,6 +2399,8 @@ const Audio = (() => {
   const FONT_THINK = 'Georgia, "Times New Roman", serif';
   const FONT_HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
   const SAVE_KEY = 'stairways_save_v2', CFG_KEY = 'stairways_cfg_v2';
+  const EDITOR = typeof STAIRWAYS_EDITOR !== 'undefined' && STAIRWAYS_EDITOR;   // level editor page
+  const PANEL_W = EDITOR ? 340 : 0;
   // a phone/tablet is one whose primary pointer is a finger (Macs with touch support report touch points too)
   const isTouch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches);
 
@@ -2420,6 +2432,7 @@ const Audio = (() => {
 
   function hasSave() { return !!store.get(SAVE_KEY); }
   function save() {
+    if (G.custom) return;
     if (!G.world) return;
     store.set(SAVE_KEY, { v: 2, id: ROOMS[G.roomIdx].id, room: G.roomIdx, mem: [...G.mem], at: Date.now() });
   }
@@ -2429,9 +2442,10 @@ const Audio = (() => {
   let scale = 1, offX = 0, offY = 0, dpr = 1;
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.floor(window.innerWidth * dpr);
+    const cw = window.innerWidth - PANEL_W;
+    canvas.width = Math.floor(cw * dpr);
     canvas.height = Math.floor(window.innerHeight * dpr);
-    canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+    canvas.style.width = cw + 'px'; canvas.style.height = window.innerHeight + 'px';
     scale = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
     offX = (canvas.width - VIEW_W * scale) / 2; offY = (canvas.height - VIEW_H * scale) / 2;
   }
@@ -2443,10 +2457,13 @@ const Audio = (() => {
   let jumpPressed = false, touchMove = 0;
   const touches = {}; // id -> {x0,y0,x,y,side,t0,jumped}
   window.addEventListener('keydown', e => {
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;   // typing in the editor panel
     Audio.init();
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Space'].includes(e.key)) e.preventDefault();
     if (e.repeat) { keys[e.code] = true; return; }
     keys[e.code] = true;
+    if (G.state === 'editor') { window.EditorUI && EditorUI.key(e); return; }
+    if (G.state === 'play' && G.custom && e.code === 'Escape') { stopTest(); return; }
     if (G.state === 'play') {
       if (['Space', 'ArrowUp', 'KeyW', 'KeyZ'].includes(e.code)) jumpPressed = true;
       if (['Escape', 'KeyP'].includes(e.code)) openPause();
@@ -2479,6 +2496,7 @@ const Audio = (() => {
   function pointerDown(id, cx, cy) {
     Audio.init();
     const [x, y] = toLogical(cx, cy);
+    if (G.state === 'editor') { touches[id] = { x, y }; EditorUI.pointer('down', x + G.camX, y); return; }
     if (G.state === 'play') {
       if (x > VIEW_W - 110 && y < 100) { openPause(); return; }
       if (id !== 'm' || isTouch) {
@@ -2494,6 +2512,7 @@ const Audio = (() => {
   }
   function pointerMove(id, cx, cy) {
     const [x, y] = toLogical(cx, cy);
+    if (G.state === 'editor') { EditorUI.pointer(touches[id] ? 'drag' : 'hover', x + G.camX, y); return; }
     const tc = touches[id];
     if (!tc) { if (G.state !== 'play') onMenuPointer(x, y, 'hover'); return; }
     tc.x = x; tc.y = y;
@@ -2506,6 +2525,7 @@ const Audio = (() => {
   }
   function pointerUp(id, cx, cy) {
     const tc = touches[id]; delete touches[id];
+    if (G.state === 'editor') { const [x, y] = toLogical(cx, cy); EditorUI.pointer('up', x + G.camX, y); return; }
     if (tc && G.state !== 'play') { const [x, y] = toLogical(cx, cy); onMenuPointer(x, y, 'up'); }
     updateTouchMove();
   }
@@ -2542,7 +2562,7 @@ const Audio = (() => {
   function loadRoom(idx, opts) {
     opts = opts || {};
     G.roomIdx = idx;
-    const room = ROOMS[idx];
+    const room = idx < 0 ? G.custom : ROOMS[idx];
     // a memory found in this visit counts only if Hazop gets out of the room with it:
     // dying or restarting puts it back, so the room has to be solved again from the start
     if (opts.respawn && G.memVisit && !room.final) { G.mem.delete(G.memVisit); G.memVisit = null; save(); }
@@ -2554,7 +2574,8 @@ const Audio = (() => {
       setTimeout(() => { if (G.world && G.world.room === room && !G.finale) startFinale(); }, 400);
     }
     const tag = CHAPTERS[room.ch].tag;
-    if (!G.bg || G.bgKey !== room.id) { G.bg = buildBackground(tag, room.w, 1000 + idx * 7); G.bgKey = room.id; G.bgTag = tag; }
+    const bgKey = room.id + '|' + room.ch + '|' + room.w;
+    if (!G.bg || G.bgKey !== bgKey) { G.bg = buildBackground(tag, room.w, 1000 + Math.max(0, idx) * 7); G.bgKey = bgKey; G.bgTag = tag; }
     G.camX = clampCam(room.spawn.x - VIEW_W / 2);
     G.particles = [];
     G.renderAng = 0;
@@ -2610,7 +2631,7 @@ const Audio = (() => {
     if (G.state === 'intro') { showChapterCard(() => { G.state = 'play'; G.hintTimer = 0; }); return; }
     if (G.state === 'thought') {
       G.state = 'play';
-      if (ROOMS[G.roomIdx].final) startFinale();
+      if (G.world && G.world.room.final) startFinale();
     }
   }
 
@@ -2791,6 +2812,7 @@ const Audio = (() => {
           break;
         case 'exit':
           Audio.sfx.exit();
+          if (G.custom) { G.state = 'transition'; fadeTo(1, () => { stopTest('exit'); fadeTo(0, null, 3); }, 2.5); break; }
           G.state = 'transition';
           fadeTo(1, () => {
             const next = G.roomIdx + 1;
@@ -2953,6 +2975,8 @@ const Audio = (() => {
       case 'goodbye': drawGoodbye(); break;
     }
     if (G.state === 'play') drawHUD();
+    if (G.state === 'editor' && window.EditorUI) EditorUI.drawOverlay(ctx, G.camX);
+    if (G.state === 'play' && G.custom) { ctx.save(); ctx.font = `20px ${FONT_TYPE}`; ctx.fillStyle = 'rgba(27,21,21,.7)'; ctx.fillText('PROVA  ·  Esc = torna all\'editor  ·  R = ricomincia', 40, 60); ctx.restore(); }
     ctx.restore(); ctx.save();
     if (G.state === 'play' && isTouch) drawTouchButtons();
     if (G.fade > 0) { ctx.fillStyle = `rgba(20,14,13,${G.fade})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
@@ -3230,7 +3254,7 @@ const Audio = (() => {
     if (G.roomLabel > 0) {
       G.roomLabel -= 1 / 60;
       ctx.save(); ctx.globalAlpha = Math.min(1, G.roomLabel); ctx.font = `22px ${FONT_TYPE}`; ctx.fillStyle = '#1b1515';
-      ctx.fillText(`${G.roomIdx + 1} / ${ROOMS.length}  ·  ${ROOMS[G.roomIdx].id}`, 40, 60); ctx.restore();
+      if (G.roomIdx >= 0) ctx.fillText(`${G.roomIdx + 1} / ${ROOMS.length}  ·  ${ROOMS[G.roomIdx].id}`, 40, 60); ctx.restore();
     }
     // pause icon (top-right), as in the GDD
     ctx.save();
@@ -3297,6 +3321,28 @@ const Audio = (() => {
   }
   setTimeout(checkForUpdate, 1500);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+
+  // ---------------- level editor: test-play a room being edited ----------------
+  function startTest(room) {
+    G.custom = room; G.mem = new Set(); G.thought = null;
+    loadRoom(-1); G.roomLabel = 0; G.hasMoved = true;
+    G.state = 'play'; G.fade = 0; G.fadeTarget = 0;
+  }
+  function stopTest(why) {
+    G.state = 'editor'; G.thought = null; G.finale = null; G.fade = 0; G.fadeTarget = 0;
+    if (window.EditorUI) EditorUI.onTestEnd(why);
+  }
+  function showPreview(room, camX) {   // the editor's live picture of the room (not running)
+    G.custom = room;
+    const tag = CHAPTERS[room.ch].tag, bgKey = room.id + '|' + room.ch + '|' + room.w;
+    if (!G.bg || G.bgKey !== bgKey) { G.bg = buildBackground(tag, room.w, 1000); G.bgKey = bgKey; G.bgTag = tag; }
+    G.world = createWorld(room, { memoryTaken: false });
+    if (camX != null) G.camX = camX;
+  }
+  if (EDITOR) {
+    G.state = 'editor'; G.fade = 0; G.fadeTarget = 0;
+    window.__editorApi = { G, startTest, stopTest, showPreview, VIEW_W, VIEW_H, canvas, toLogical, clampCam: x => Math.max(0, Math.min((G.custom ? G.custom.w : VIEW_W) - VIEW_W, x)) };
+  }
 
   // debug / test API
   window.__stairways = { G, loadRoom, startNewGame, continueGame, ROOMS, startFinale: () => startFinale(), setState: s => { G.state = s; } };
