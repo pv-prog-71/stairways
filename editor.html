@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- Stairways v0.47 — built 2026-11-06 18:50 UTC -->
+<!-- Stairways v0.49 — built 2026-11-06 20:12 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="version" content="0.47">
+<meta name="version" content="0.49">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +23,7 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
-const GAME_VERSION = '0.47';
+const GAME_VERSION = '0.49';
 const STAIRWAYS_EDITOR = true;
 
 // ---- i18n.js ----
@@ -3410,6 +3410,11 @@ const Audio = (() => {
     r.platforms = r.platforms.map(p => { const q = Object.assign({}, p); if (q.balance && !doc.platforms.some(o => o.id === q.balance.with)) delete q.balance; return q; });
     r.stairs = r.stairs.map(s => { const q = Object.assign({}, s); if (q.link && !doc.stairs.some(o => o.id === q.link)) delete q.link; return q; });
     if (!r.memory) delete r.memory;
+    // pieces that wait for a lever but nothing commands them
+    const used = new Set([...doc.levers, ...doc.plates].flatMap(l => l.actions.map(a => a.plat || a.stair)));
+    for (const p of doc.platforms) if (p.move && p.move.mode !== 'loop' && !used.has(p.id)) warn.push(p.id + ' è mobile ma nessuna leva o pedana la comanda: resterà ferma');
+    for (const p of doc.platforms) if (p.move && p.move.mode === 'loop' && !p.move.active && !used.has(p.id)) warn.push(p.id + ' è continua ma spenta e nessuna leva la avvia');
+    for (const st of doc.stairs) if (st.kind === 'rot' && !st.on && !st.ride && !st.link && !used.has(st.id)) warn.push('la scala ' + st.id + ' è spenta e nessuna leva la avvia');
     return { room: r, warn };
   }
   function targetExists(a) { return a.stair != null ? doc.stairs.some(s => s.id === a.stair) : doc.platforms.some(p => p.id === a.plat); }
@@ -3595,7 +3600,7 @@ const Audio = (() => {
       if (inChain) return [['Blocca la catena col lucchetto', { plat: p.id, lock: true }]];
       if (!p.move) return [];
       if (p.move.mode === 'loop') return [['Avvia', { plat: p.id, op: 'on' }], ['Ferma', { plat: p.id, op: 'off' }], ['Avvia / ferma', { plat: p.id, op: 'toggle' }], ['Blocca col lucchetto', { plat: p.id, lock: true }]];
-      return [['Sposta (va / torna)', { plat: p.id, op: 'toggle' }], ['Sposta solo in avanti', { plat: p.id, op: 'on' }], ['Riporta indietro', { plat: p.id, op: 'off' }], ['Blocca col lucchetto', { plat: p.id, lock: true }]];
+      return [['Avvia: va avanti e indietro di continuo', { plat: p.id, op: 'on', _loop: true }], ['Sposta una volta (ripassando torna)', { plat: p.id, op: 'toggle' }], ['Sposta solo in avanti', { plat: p.id, op: 'on' }], ['Riporta indietro', { plat: p.id, op: 'off' }], ['Blocca col lucchetto', { plat: p.id, lock: true }]];
     }
     return [];
   }
@@ -3784,7 +3789,9 @@ const Audio = (() => {
     if (pendingLink) {
       panel.append(el('h2', { textContent: 'Cosa deve fare?' }));
       for (const [t, a] of pendingLink.opts) panel.append(el('div', { className: 'row' }, [btn(t, () => {
-        commit(); const src = getSel(pendingLink.from); src.actions.push(a); pendingLink = null; refresh();
+        commit(); const src = getSel(pendingLink.from); const act = Object.assign({}, a);
+        if (act._loop) { const p = doc.platforms.find(q => q.id === act.plat); p.move.mode = 'loop'; delete p.move.active; if (p.move.pause == null) p.move.pause = 0.6; delete act._loop; }
+        src.actions.push(act); pendingLink = null; refresh();
       })]));
       panel.append(btn('Annulla', () => { pendingLink = null; refresh(); }));
       return;
