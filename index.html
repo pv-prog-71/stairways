@@ -1,101 +1,3307 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quattro Corde</title>
+<!-- Stairways v0.45 — built 2026-11-06 18:15 UTC -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="version" content="0.45">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d1515">
+<title>Stairways</title>
+<meta name="description" content="Stairways — a metaphysical platform game.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
-:root{--bg:#eef1f4;--ink:#1b222c;--mut:#5d6877;--line:#b9c1cc;--card:#fff;--note:#c27a12;--ok:#12856b;--bad:#cf3b45;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141a;--ink:#e8edf3;--mut:#93a0b0;--line:#2e3846;--card:#171e27;--note:#e8a736;--ok:#3ccfa8;--bad:#ff6670}}
-:root[data-theme="dark"]{--bg:#0f141a;--ink:#e8edf3;--mut:#93a0b0;--line:#2e3846;--card:#171e27;--note:#e8a736;--ok:#3ccfa8;--bad:#ff6670}
-html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Avenir Next","Segoe UI",system-ui,sans-serif}
-main{max-width:980px;margin:0 auto;padding:18px 14px 40px}
-h1{font-size:26px;letter-spacing:-.02em;margin:0 0 2px}
-p.sub{margin:0 0 16px;color:var(--mut)}
-.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
-button,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer}
-button.main{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
-button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--note);outline-offset:2px}
-canvas{display:block;width:100%;height:260px;background:var(--card);border:1px solid var(--line);border-radius:10px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 22px;margin:14px 0}
-label{display:block;font-size:14px;color:var(--mut)}
-label b{color:var(--ink);font-weight:600}
-input[type=range]{width:100%}
-#live{font-variant-numeric:tabular-nums;min-height:1.5em}
-#res{display:none;margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-#res strong{font-size:34px;letter-spacing:-.02em}
-.wide{overflow-x:auto}
-</style></head><body><main>
-<h1>Quattro Corde</h1>
-<p class="sub">Suona il basso seguendo la tab. L’app ti ascolta e segna ogni nota: giusta e a tempo, oppure ×.</p>
-<div class="bar">
-<select id="song" aria-label="Brano"></select>
-<button id="mic">Attiva microfono</button>
-<button id="play" class="main">Play</button>
-<button id="rst">Dall’inizio</button>
-<span id="live" aria-live="polite">Microfono spento</span>
-</div>
-<div class="wide"><canvas id="cv" aria-label="Tab per basso a quattro corde"></canvas></div>
-<div class="grid">
-<label>Posizione <b id="vp"></b><input id="pos" type="range" min="-2" max="20" step="0.05" value="-2"></label>
-<label>Velocità <b id="vs">100%</b><input id="spd" type="range" min="0.4" max="1.25" step="0.05" value="1"></label>
-<label>Ritardo del microfono <b id="vl">120 ms</b><input id="lat" type="range" min="0" max="400" step="10" value="120"></label>
-<label><input id="oct" type="checkbox" checked> Accetta la nota anche un’ottava sopra o sotto</label>
-</div>
-<div id="res" aria-live="polite"></div>
-</main>
+  :root { color-scheme: dark; --bg: #1d1515; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { display: block; position: fixed; inset: 0; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Stairways"></canvas>
 <script>
-const OPEN=[43,38,33,28],LBL=["G","D","A","E"],NM=["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
-const SONGS={
-ode:{n:"Inno alla gioia (pubblico dominio)",bpm:84,a:[[40,1],[40,1],[41,1],[43,1],[43,1],[41,1],[40,1],[38,1],[36,1],[36,1],[38,1],[40,1],[40,1.5],[38,.5],[38,2]]},
-fra:{n:"Fra Martino (tradizionale)",bpm:96,a:[[36,1],[38,1],[40,1],[36,1],[36,1],[38,1],[40,1],[36,1],[40,1],[41,1],[43,2],[40,1],[41,1],[43,2],[43,.5],[45,.5],[43,.5],[41,.5],[40,1],[36,1],[43,.5],[45,.5],[43,.5],[41,.5],[40,1],[36,1],[36,1],[31,1],[36,2],[36,1],[31,1],[36,2]]},
-scala:{n:"Scala di Do, esercizio",bpm:72,a:[[36,1],[38,1],[40,1],[41,1],[43,1],[45,1],[47,1],[48,2],[47,1],[45,1],[43,1],[41,1],[40,1],[38,1],[36,2]]}
+'use strict';
+const GAME_VERSION = '0.45';
+
+// ---- i18n.js ----
+// ============================================================
+// STAIRWAYS — texts (ES = GDD original script, EN, IT)
+// ============================================================
+
+const MEMORY_ORDER = [
+  'pnt_painting', 'pnt_brush', 'pnt_book', 'pnt_register', 'pnt_diary',
+  'bal_dress', 'bal_ticket', 'bal_tea', 'bal_tie', 'bal_photo',
+  'jgt_note', 'jgt_cross', 'jgt_toy', 'jgt_guitar', 'jgt_plate',
+  'btl_bell', 'btl_corks', 'btl_neon', 'btl_coins', 'btl_bottle',
+  'epl_clock',
+];
+
+const TEXT = {
+  es: {
+    lang: 'Español',
+    title: 'STAIRWAYS',
+    tagline: 'Hay escaleras que te llevan a donde decides ir',
+    start: 'EMPIEZA AVENTURA', cont: 'CONTINÚA AVENTURA', newgame: 'NUEVA AVENTURA',
+    config: 'CONFIGURACIÓN', credits: 'CRÉDITOS', quit: 'CIERRA EL JUEGO', back: 'VOLVER',
+    resume: 'CONTINÚA AVENTURA', toMenu: 'MENÚ PRINCIPAL', skip: 'SIGUIENTE CUADRO (PRUEBA)', restart: 'REINICIA EL CUADRO',
+    language: 'Idioma', music: 'Música', sfx: 'Efectos', hints: 'Ayudas táctiles', fullscreen: 'Pantalla completa',
+    on: 'SÍ', off: 'NO',
+    confirmNew: 'Se borrará la partida guardada. ¿Seguro?', yes: 'SÍ', no: 'NO',
+    swipeMove: 'desliza aquí para moverte', swipeJump: 'desliza aquí para saltar',
+    keysHint: '← →  /  A D  moverse      ESPACIO / ↑  saltar      ESC  pausa',
+    tapContinue: 'toca para continuar',
+    saved: 'guardado',
+    goodbye: 'Hasta pronto.', goodbyeSub: 'Puedes cerrar esta pestaña.',
+    ch1: 'Capítulo 1', ch2: 'Capítulo 2', ch3: 'Capítulo 3', ch4: 'Capítulo 4', epl: 'Epílogo',
+    ch1n: 'Pinturas', ch2n: 'El baile', ch3n: 'Juguetes', ch4n: 'La botella', epln: 'El reloj',
+    memories: 'recuerdos',
+    intro: ['¿Quién soy yo… realmente?', '¿Dónde he estado todo este tiempo?…'],
+    end: ['FIN'],
+    inspired: 'Inspirado en la Pintura Metafísica italiana',
+    creditsList: [
+      ['Dirección y producción', 'Paolo Villella'],
+      ['Inspirado en', 'la Pintura Metafísica italiana'],
+    ],
+    mem: {
+      pnt_painting: 'Creo que me gustaba pintar, pero esta pintura no ha sido terminada.',
+      pnt_brush: 'Me acuerdo de un hombre discutiendo con su hijo, tirando unas pinturas al suelo… Pero ¿por qué está tan enfadado?',
+      pnt_book: 'Es un libro de historia del arte. ¡Está todo garabateado! ¿Cómo se puede estudiar algo con tanta ira?',
+      pnt_register: 'Es de un profesor… ¿Pero por qué las notas son tan bajas?',
+      pnt_diary: "El diario de una chica. Dice: '¡Maldito sea el profesor Williams! ¡Lo odio!'… Williams… ¡Soy yo!",
+      bal_dress: 'Un baile… La fiesta de graduación… ¡Nunca había visto una mujer tan hermosa!',
+      bal_ticket: 'Un beso apasionado en la oscuridad. Es la misma mujer de la fiesta de graduación… ¡Recuerdo! ¡Se llamaba Ana!',
+      bal_tea: "Hay una mujer que habla con otra señora… ¡Es mi madre! 'Hazop lo entenderá – dice – no se preocupe. Él se casará con quien le diremos que se case'… ¡Así que mi nombre es Hazop!",
+      bal_tie: 'Me estaba preparando para algo, una boda creo… La mía… pero ¿con quién?',
+      bal_photo: 'Parecen dos personas casadas, pero no se ve bien, la foto está demasiado quemada.',
+      jgt_note: "Solo dice: 'Estoy esperando un bebé, Lara'… Mi mujer… ¡Lara!",
+      jgt_cross: 'Su esposa e hijo están bien, Sr. Williams. La están esperando en la habitación de la izquierda… ¿Por qué me voy del hospital?',
+      jgt_toy: 'Recuerdo gritar y romper un juguete… ¿Por qué lo hice?',
+      jgt_guitar: "'Papá, papá, escucha', '¿Qué te crees, que eres cantante?… No tengo tiempo ahora, vete'… Era mi hijo… ¿por qué, por qué dije esas cosas?",
+      jgt_plate: "Recuerdo una discusión con Lara: '¡Déjame Hazop, me estás haciendo daño!… ¡Estás borracho, siempre estás borracho, déjanos en paz de una vez!'",
+      btl_bell: 'Es la recepción de un motel, recuerdo una habitación sucia y triste…',
+      btl_corks: 'Es verdad, yo siempre estaba bebiendo.',
+      btl_neon: 'Recuerdo ese letrero de neón… Creo que lo vi mil veces antes de quedarme dormido en el callejón.',
+      btl_coins: 'Me he sentado muchas veces frente a esa iglesia… pidiendo dinero… es la misma donde me casé.',
+      btl_bottle: 'Recuerdo a un tío tratando de robarme el dinero… Un fuerte dolor repentino en la cabeza, y luego nada más…',
+      epl_clock: 'Por fin recuerdo todo, quién era realmente y lo que pasó. He sido una persona horrible… ¡Pero creo que ahora tengo una segunda oportunidad!',
+    },
+  },
+  en: {
+    lang: 'English',
+    title: 'STAIRWAYS',
+    tagline: 'There are stairs that bring you where you decide to go',
+    start: 'START JOURNEY', cont: 'CONTINUE JOURNEY', newgame: 'NEW JOURNEY',
+    config: 'CONFIGURATION', credits: 'CREDITS', quit: 'QUIT GAME', back: 'BACK',
+    resume: 'CONTINUE JOURNEY', toMenu: 'MAIN MENU', skip: 'NEXT ROOM (TEST)', restart: 'RESTART ROOM',
+    language: 'Language', music: 'Music', sfx: 'Sound FX', hints: 'Touch hints', fullscreen: 'Fullscreen',
+    on: 'ON', off: 'OFF',
+    confirmNew: 'Your saved journey will be erased. Are you sure?', yes: 'YES', no: 'NO',
+    swipeMove: 'swipe here to move', swipeJump: 'swipe here to jump',
+    keysHint: '← →  /  A D  move      SPACE / ↑  jump      ESC  pause',
+    tapContinue: 'tap to continue',
+    saved: 'saved',
+    goodbye: 'See you soon.', goodbyeSub: 'You can close this tab.',
+    ch1: 'Chapter 1', ch2: 'Chapter 2', ch3: 'Chapter 3', ch4: 'Chapter 4', epl: 'Epilogue',
+    ch1n: 'Paintings', ch2n: 'The Dance', ch3n: 'Toys', ch4n: 'The Bottle', epln: 'The Clock',
+    memories: 'memories',
+    intro: ['Who am I… really?', 'Where have I been all this time?…'],
+    end: ['THE END'],
+    inspired: 'Inspired by Italian Metaphysical Painting',
+    creditsList: [
+      ['Direction & production', 'Paolo Villella'],
+      ['Inspired by', 'Italian Metaphysical Painting'],
+    ],
+    mem: {
+      pnt_painting: 'I think I used to love painting, but this painting was never finished.',
+      pnt_brush: 'I remember a man arguing with his son, throwing paints on the floor… But why is he so angry?',
+      pnt_book: "It's an art history book. It's all scribbled over! How can anyone study something with so much rage?",
+      pnt_register: "It belongs to a teacher… But why are the grades so low?",
+      pnt_diary: "A girl's diary. It says: 'Damn Professor Williams! I hate him!'… Williams… That's me!",
+      bal_dress: "A dance… The graduation party… I had never seen such a beautiful woman!",
+      bal_ticket: "A passionate kiss in the dark. It's the same woman from the graduation party… I remember! Her name was Ana!",
+      bal_tea: "A woman is talking to another lady… It's my mother! 'Hazop will understand – she says – don't worry. He'll marry whoever we tell him to'… So my name is Hazop!",
+      bal_tie: 'I was getting ready for something, a wedding I think… Mine… but to whom?',
+      bal_photo: "They look like a married couple, but you can't see well, the photo is too burnt.",
+      jgt_note: "It only says: 'I'm expecting a baby, Lara'… My wife… Lara!",
+      jgt_cross: "Your wife and son are fine, Mr. Williams. They're waiting for you in the room on the left… Why am I leaving the hospital?",
+      jgt_toy: 'I remember shouting and breaking a toy… Why did I do it?',
+      jgt_guitar: "'Dad, dad, listen', 'What do you think you are, a singer?… I don't have time now, go away'… It was my son… why, why did I say those things?",
+      jgt_plate: "I remember a fight with Lara: 'Let go of me Hazop, you're hurting me!… You're drunk, you're always drunk, just leave us alone!'",
+      btl_bell: "It's a motel reception, I remember a dirty, sad room…",
+      btl_corks: "It's true, I was always drinking.",
+      btl_neon: 'I remember that neon sign… I think I saw it a thousand times before falling asleep in the alley.',
+      btl_coins: "I sat in front of that church so many times… begging for money… it's the same one where I got married.",
+      btl_bottle: 'I remember a guy trying to steal my money… A sudden sharp pain in my head, and then nothing…',
+      epl_clock: "At last I remember everything, who I really was and what happened. I've been a horrible person… But I think now I have a second chance!",
+    },
+  },
+  it: {
+    lang: 'Italiano',
+    title: 'STAIRWAYS',
+    tagline: 'Ci sono scale che ti portano dove decidi di andare',
+    start: 'INIZIA IL VIAGGIO', cont: 'CONTINUA IL VIAGGIO', newgame: 'NUOVO VIAGGIO',
+    config: 'CONFIGURAZIONE', credits: 'RICONOSCIMENTI', quit: 'ESCI DAL GIOCO', back: 'INDIETRO',
+    resume: 'CONTINUA IL VIAGGIO', toMenu: 'MENU PRINCIPALE', skip: 'STANZA SUCCESSIVA (TEST)', restart: 'RICOMINCIA LA STANZA',
+    language: 'Lingua', music: 'Musica', sfx: 'Effetti', hints: 'Aiuti touch', fullscreen: 'Schermo intero',
+    on: 'SÌ', off: 'NO',
+    confirmNew: 'La partita salvata verrà cancellata. Sei sicuro?', yes: 'SÌ', no: 'NO',
+    swipeMove: 'scorri qui per muoverti', swipeJump: 'scorri qui per saltare',
+    keysHint: '← →  /  A D  muoviti      SPAZIO / ↑  salta      ESC  pausa',
+    tapContinue: 'tocca per continuare',
+    saved: 'salvato',
+    goodbye: 'A presto.', goodbyeSub: 'Puoi chiudere questa scheda.',
+    ch1: 'Capitolo 1', ch2: 'Capitolo 2', ch3: 'Capitolo 3', ch4: 'Capitolo 4', epl: 'Epilogo',
+    ch1n: 'Dipinti', ch2n: 'Il ballo', ch3n: 'Giocattoli', ch4n: 'La bottiglia', epln: "L'orologio",
+    memories: 'ricordi',
+    intro: ['Chi sono io… davvero?', 'Dove sono stato per tutto questo tempo?…'],
+    end: ['FINE'],
+    inspired: 'Ispirato alla Pittura Metafisica italiana',
+    creditsList: [
+      ['Direzione e produzione', 'Paolo Villella'],
+      ['Ispirato a', 'la Pittura Metafisica italiana'],
+    ],
+    mem: {
+      pnt_painting: 'Credo che mi piacesse dipingere, ma questo quadro non è mai stato finito.',
+      pnt_brush: 'Ricordo un uomo che litiga con suo figlio, gettando dei colori a terra… Ma perché è così arrabbiato?',
+      pnt_book: "È un libro di storia dell'arte. È tutto scarabocchiato! Come si può studiare qualcosa con tanta rabbia?",
+      pnt_register: 'È di un professore… Ma perché i voti sono così bassi?',
+      pnt_diary: "Il diario di una ragazza. Dice: 'Maledetto il professor Williams! Lo odio!'… Williams… Sono io!",
+      bal_dress: 'Un ballo… La festa di diploma… Non avevo mai visto una donna così bella!',
+      bal_ticket: 'Un bacio appassionato nel buio. È la stessa donna della festa di diploma… Ricordo! Si chiamava Ana!',
+      bal_tea: "C'è una donna che parla con un'altra signora… È mia madre! 'Hazop capirà – dice – non si preoccupi. Sposerà chi gli diremo di sposare'… Quindi mi chiamo Hazop!",
+      bal_tie: 'Mi stavo preparando per qualcosa, un matrimonio credo… Il mio… ma con chi?',
+      bal_photo: 'Sembrano due sposi, ma non si vede bene, la foto è troppo bruciata.',
+      jgt_note: "Dice solo: 'Aspetto un bambino, Lara'… Mia moglie… Lara!",
+      jgt_cross: 'Sua moglie e suo figlio stanno bene, signor Williams. La aspettano nella stanza a sinistra… Perché me ne vado dall\'ospedale?',
+      jgt_toy: 'Ricordo di aver urlato e rotto un giocattolo… Perché l\'ho fatto?',
+      jgt_guitar: "'Papà, papà, ascolta', 'Cosa credi, di essere un cantante?… Non ho tempo adesso, vattene'… Era mio figlio… perché, perché ho detto quelle cose?",
+      jgt_plate: "Ricordo una lite con Lara: 'Lasciami Hazop, mi fai male!… Sei ubriaco, sei sempre ubriaco, lasciaci in pace una volta per tutte!'",
+      btl_bell: 'È la reception di un motel, ricordo una stanza sporca e triste…',
+      btl_corks: 'È vero, bevevo sempre.',
+      btl_neon: "Ricordo quell'insegna al neon… Credo di averla vista mille volte prima di addormentarmi nel vicolo.",
+      btl_coins: 'Mi sono seduto tante volte davanti a quella chiesa… a chiedere soldi… è la stessa dove mi sono sposato.',
+      btl_bottle: 'Ricordo un tizio che cercava di rubarmi i soldi… Un forte dolore improvviso alla testa, e poi più niente…',
+      epl_clock: 'Finalmente ricordo tutto, chi ero davvero e cosa è successo. Sono stato una persona orribile… Ma credo che ora ho una seconda possibilità!',
+    },
+  },
 };
-const $=id=>document.getElementById(id),cv=$("cv"),cx=cv.getContext("2d");
-let notes=[],bpm=80,end=0,pos=-2,playing=false,last=0,ana=null,buf=null,sr=48000,cur=0,prev=0,tol=.3;
-const sel=$("song");for(const k in SONGS){const o=document.createElement("option");o.value=k;o.textContent=SONGS[k].n;sel.append(o)}
-function load(k){const S=SONGS[k];let t=0;bpm=S.bpm;notes=S.a.map(([m,d])=>{let s=0;for(let i=0;i<4;i++)if(OPEN[i]<=m){s=i;break}const n={m,s,f:m-OPEN[s],t,d,st:0};t+=d;return n});end=t;$("pos").max=end;playing=false;$("play").textContent="Play";$("res").style.display="none";pos=-2;$("pos").value=pos}
-sel.onchange=()=>load(sel.value);load("ode");
-$("play").onclick=()=>{if(pos>=end)seek(-2);playing=!playing;$("play").textContent=playing?"Pausa":"Play";$("res").style.display="none"};
-$("rst").onclick=()=>{seek(-2)};
-function seek(p){pos=p;for(const n of notes)if(n.t>=p-.5)n.st=0;$("pos").value=p}
-$("pos").oninput=e=>{seek(+e.target.value);$("res").style.display="none"};
-$("spd").oninput=e=>$("vs").textContent=Math.round(e.target.value*100)+"%";
-$("lat").oninput=e=>$("vl").textContent=e.target.value+" ms";
-$("mic").onclick=async()=>{
- try{const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
- const ac=new (window.AudioContext||window.webkitAudioContext)();sr=ac.sampleRate;const src=ac.createMediaStreamSource(st);ana=ac.createAnalyser();ana.fftSize=4096;buf=new Float32Array(4096);src.connect(ana);
- $("mic").textContent="Microfono attivo";$("mic").disabled=true;$("live").textContent="Suona una corda a vuoto per provare";setInterval(listen,40)}
- catch(e){$("live").textContent="Microfono non disponibile: controlla i permessi del browser o apri la pagina in una scheda a sé."}};
-function yin(b){const W=2048,M=Math.min(1500,b.length-W);let r=0;for(let i=0;i<W;i++)r+=b[i]*b[i];if(r/W<2e-5)return 0;
- const d=new Float32Array(M);for(let t=1;t<M;t++){let s=0;for(let j=0;j<W;j++){const x=b[j]-b[j+t];s+=x*x}d[t]=s}
- let run=0;d[0]=1;for(let t=1;t<M;t++){run+=d[t];d[t]=d[t]*t/run}
- for(let t=Math.floor(sr/400);t<M-1;t++)if(d[t]<.15){while(t+1<M-1&&d[t+1]<d[t])t++;const a=d[t-1],c=d[t+1],q=a-2*d[t]+c;return sr/(t+(q?(a-c)/(2*q):0))}return 0}
-function listen(){ana.getFloatTimeDomainData(buf);const f=yin(buf);if(!f){cur=0;prev=0;return}
- const m=Math.round(69+12*Math.log2(f/440));if(m<24||m>62){cur=0;return}
- $("live").textContent="Senti: "+NM[m%12]+" ("+f.toFixed(0)+" Hz)";
- const stable=m===prev;prev=m;cur=m;if(!stable||!playing)return;
- const p=pos-($("lat").value/1000)*bpm*+$("spd").value/60,tb=tol*bpm*+$("spd").value/60;
- for(const n of notes)if(n.st===0&&Math.abs(p-n.t)<=tb&&(m===n.m||($("oct").checked&&(m-n.m)%12===0)))n.st=1}
-function finish(){playing=false;$("play").textContent="Play";const ok=notes.filter(n=>n.st===1).length,pc=Math.round(ok/notes.length*100);
- const R=$("res");R.style.display="block";R.innerHTML="<strong>"+pc+"%</strong> · "+ok+" note su "+notes.length+(ana?"":"<br>Il microfono era spento: attivalo per ricevere il punteggio vero.")}
-function frame(ts){const dt=Math.min(.1,(ts-last)/1000||0);last=ts;const sp=+$("spd").value;
- if(playing){pos+=dt*bpm*sp/60;const tb=tol*bpm*sp/60;const lb=($("lat").value/1000)*bpm*sp/60;
-  for(const n of notes)if(n.st===0&&pos-lb>n.t+tb)n.st=ana?2:3;
-  $("pos").value=pos;if(pos>end+.5)finish()}
- $("vp").textContent=Math.max(0,Math.floor(pos))+" / "+Math.round(end)+" battiti";draw();requestAnimationFrame(frame)}
-function draw(){const dpr=devicePixelRatio||1,w=cv.clientWidth,h=260;if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=h*dpr}
- cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,w,h);const cs=getComputedStyle(document.documentElement),g=v=>cs.getPropertyValue(v).trim();
- const nx=w*.2,ppb=Math.max(70,Math.min(110,w/9)),ys=[44,100,156,212];
- cx.font="600 15px system-ui,sans-serif";cx.textBaseline="middle";cx.textAlign="center";
- for(let b=Math.ceil(pos-nx/ppb);b<pos+(w-nx)/ppb;b++){const x=nx+(b-pos)*ppb;cx.strokeStyle=g("--line");cx.globalAlpha=.35;cx.beginPath();cx.moveTo(x,24);cx.lineTo(x,232);cx.stroke()}cx.globalAlpha=1;
- ys.forEach((y,i)=>{cx.strokeStyle=g("--line");cx.lineWidth=1+i*.6;cx.beginPath();cx.moveTo(34,y);cx.lineTo(w,y);cx.stroke();cx.fillStyle=g("--mut");cx.fillText(LBL[i],16,y)});cx.lineWidth=1;
- for(const n of notes){const x=nx+(n.t-pos)*ppb,wd=Math.max(30,n.d*ppb-6);if(x+wd<34||x>w)continue;const y=ys[n.s];
-  const c=n.st===1?g("--ok"):n.st===2?g("--bad"):g("--note");cx.globalAlpha=n.st===3||(n.st===0&&x<nx-60)?.45:1;
-  cx.fillStyle=c;cx.beginPath();cx.roundRect(Math.max(x,36),y-15,wd-(Math.max(x,36)-x),30,15);cx.fill();
-  cx.fillStyle="#fff";cx.fillText(n.st===2?"×":String(n.f),Math.max(x,36)+15,y);cx.globalAlpha=1}
- cx.strokeStyle=g("--ink");cx.lineWidth=2;cx.beginPath();cx.moveTo(nx,16);cx.lineTo(nx,240);cx.stroke();cx.lineWidth=1;
- cx.fillStyle=g("--mut");cx.font="13px system-ui,sans-serif";cx.textAlign="left";
- if(pos<0&&playing)cx.fillText("Preparati…",nx+10,250);else if(!playing&&pos<=-1.9)cx.fillText("Premi Play e suona sulla linea",nx+10,250)}
-requestAnimationFrame(frame);
-</script></body></html>
+
+const MEMORY_NAMES = {
+  es: { pnt_painting: 'Una pintura incompleta', pnt_brush: 'Un pincel roto', pnt_book: 'Un libro de historia del arte', pnt_register: 'Un registro de calificaciones', pnt_diary: 'El diario de un estudiante', bal_dress: 'Un vestido rojo', bal_ticket: 'Una entrada de cine', bal_tea: 'Una taza de té', bal_tie: 'Una corbata', bal_photo: 'Una foto medio quemada', jgt_note: 'Una nota escrita a mano', jgt_cross: 'Una cruz roja', jgt_toy: 'Un juguete roto', jgt_guitar: 'Una guitarra pequeña', jgt_plate: 'Un plato roto', btl_bell: 'Una campana de recepción', btl_corks: 'Algunos corchos', btl_neon: 'Un letrero de neón', btl_coins: 'Unas monedas', btl_bottle: 'Una botella rota', epl_clock: 'Un reloj en la pared' },
+  en: { pnt_painting: 'An unfinished painting', pnt_brush: 'A broken paintbrush', pnt_book: 'An art history book', pnt_register: 'A grade register', pnt_diary: "A student's diary", bal_dress: 'A red dress', bal_ticket: 'A cinema ticket', bal_tea: 'A cup of tea', bal_tie: 'A tie', bal_photo: 'A half-burnt photo', jgt_note: 'A handwritten note', jgt_cross: 'A red cross', jgt_toy: 'A broken toy', jgt_guitar: 'A small guitar', jgt_plate: 'A broken plate', btl_bell: 'A reception bell', btl_corks: 'Some corks', btl_neon: 'A neon sign', btl_coins: 'Some coins', btl_bottle: 'A broken bottle', epl_clock: 'A clock on the wall' },
+  it: { pnt_painting: 'Un dipinto incompiuto', pnt_brush: 'Un pennello rotto', pnt_book: "Un libro di storia dell'arte", pnt_register: 'Un registro dei voti', pnt_diary: 'Il diario di una studentessa', bal_dress: 'Un vestito rosso', bal_ticket: 'Un biglietto del cinema', bal_tea: 'Una tazza di tè', bal_tie: 'Una cravatta', bal_photo: 'Una foto mezza bruciata', jgt_note: 'Un biglietto scritto a mano', jgt_cross: 'Una croce rossa', jgt_toy: 'Un giocattolo rotto', jgt_guitar: 'Una chitarra piccola', jgt_plate: 'Un piatto rotto', btl_bell: 'Un campanello da reception', btl_corks: 'Alcuni tappi di sughero', btl_neon: 'Un\'insegna al neon', btl_coins: 'Delle monete', btl_bottle: 'Una bottiglia rotta', epl_clock: 'Un orologio sul muro' },
+};
+
+
+// ---- levels.js ----
+// ============================================================
+// STAIRWAYS — level data
+// Coordinates: logical px, room height 900. Platforms: x,y = top-left.
+// Stair: x,y = pivot (centre), ang in degrees (0 = horizontal, teeth up,
+// positive = clockwise on screen). kind: rot | weight | static
+// ============================================================
+
+const CHAPTERS = [
+  { tag: 'PNT', key: 'ch1' },
+  { tag: 'BAL', key: 'ch2' },
+  { tag: 'JGT', key: 'ch3' },
+  { tag: 'BTL', key: 'ch4' },
+  { tag: 'EPL', key: 'epl' },
+];
+
+const ROOMS = [
+  // ---------------- CHAPTER 1 : PINTURAS ----------------
+  {
+    id: 'PNT-1', ch: 0, w: 1600, h: 900, tutorial: true,
+    spawn: { x: 140, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 640, h: 200 },
+      { id: 'p1', x: 1060, y: 760, w: 540, h: 140 },
+      { id: 'p2', x: 40, y: 420, w: 300, move: { dx: 230, speed: 140 } },
+      { id: 'p3', x: 1075, y: 120, w: 525, move: { dy: 380, speed: 130 } },
+    ],
+    stairs: [
+      { id: 's1', x: 820, y: 560, len: 460, ang: 200, kind: 'rot', on: false, dir: 1, speed: 26 },
+    ],
+    levers: [
+      { x: 1330, plat: 'p1', actions: [{ stair: 's1', on: true }, { plat: 'p2', op: 'on' }] },
+      { x: 150, plat: 'p2', actions: [{ plat: 'p3', op: 'on' }] },
+    ],
+    memory: { id: 'pnt_painting', x: 1400, y: 75, plat: 'p3' },
+    exit: { x: 1545, y: 250, w: 120, h: 250 },
+    plan: ['L0', 'L1', 'M', 'X'],
+  },
+  {
+    // "Jump the lever": levers fire when walked over. The middle one breaks the path:
+    // the idea is to jump over it.
+    id: 'PNT-T1', ch: 0, w: 2000, h: 900,
+    spawn: { x: 100, y: 720 },
+    platforms: [
+      { id: 'i0', x: 0, y: 720, w: 400, h: 180 },
+      { id: 'b1', x: 400, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i1', x: 700, y: 720, w: 300, h: 180 },
+      { id: 'b2', x: 1000, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i2', x: 1300, y: 720, w: 250, h: 180 },
+      { id: 'b3', x: 1550, y: 1100, w: 300, move: { dy: -380, speed: 320 } },
+      { id: 'i3', x: 1850, y: 720, w: 150, h: 180 },
+    ],
+    levers: [
+      { x: 300, plat: 'i0', actions: [{ plat: 'b1', op: 'toggle' }, { plat: 'b2', op: 'toggle' }] },
+      { x: 850, plat: 'i1', actions: [{ plat: 'b2', op: 'toggle' }, { plat: 'b3', op: 'toggle' }] },
+      { x: 1425, plat: 'i2', actions: [{ plat: 'b3', op: 'toggle' }] },
+    ],
+    exit: { x: 1945, y: 460, w: 120, h: 270 },
+  },
+  {
+    // "The brush": the lever slides the bridge to the exit (top left) out or back. It counts only when
+    // walked right across, so going to the brush and coming back always leaves the bridge in.
+    // Idea: jump over the lever once (going or coming back).
+    id: 'PNT-2', ch: 0, w: 1600, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 420, h: 200 },
+      { id: 'ge', x: 0, y: 400, w: 440, h: 26 },
+      { id: 'br', x: 40, y: 400, w: 400, move: { dx: 420, speed: 500 } },
+      { id: 'p1', x: 860, y: 400, w: 540 },
+    ],
+    stairs: [{ id: 's1', x: 620, y: 560, len: 440, ang: -30, kind: 'static' }],
+    levers: [{ x: 1130, plat: 'p1', type: 'pass', actions: [{ plat: 'br', op: 'toggle' }] }],
+    memory: { id: 'pnt_brush', x: 1340, y: 355 },
+    exit: { x: -65, y: 140, w: 120, h: 270 },
+    plan: ['M', 'X'],
+  },
+  {
+    // "The book": three steps of thought. The book and a crate sit on a ledge you reach only from the top
+    // of the stair, and the top of the stair only from below it (hang under it and walk round its end).
+    // The way out is the lift, which rises while the pedal beside it is pressed: drop the crate on the lift,
+    // get on, and push the crate onto the pedal from the lift.
+    id: 'PNT-3', ch: 0, w: 1800, h: 900,
+    spawn: { x: 120, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 1800, h: 140 },
+      { id: 'pb', x: 860, y: 380, w: 260 },
+      { id: 'lf', x: 1100, y: 760, w: 160, move: { dy: -510, speed: 170 } },
+      { id: 'ex', x: 1380, y: 250, w: 420, h: 26 },
+    ],
+    stairs: [{ id: 's1', x: 560, y: 528, len: 460, ang: 0, kind: 'static' }],
+    crates: [{ id: 'c1', x: 1050, y: 380 }],
+    plates: [{ x: 1310, plat: 'g1', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'pnt_book', x: 940, y: 335 },
+    exit: { x: 1745, y: -10, w: 120, h: 270 },
+  },
+  {
+    // The wall: a stair standing upright is a wall you can walk up. A cracked slab carries you only once.
+    id: 'PNT-T3', ch: 0, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 560, h: 140 },
+      { id: 'h1', x: 760, y: 340, w: 260 },
+      { id: 'cb', x: 1180, y: 340, w: 200, crumble: true },
+      { id: 'ex', x: 1540, y: 340, w: 260, h: 560 },
+    ],
+    stairs: [
+      { id: 'w1', x: 690, y: 540, len: 440, ang: 90, kind: 'static' },
+    ],
+    exit: { x: 1745, y: 80, w: 120, h: 270 },
+  },
+  {
+    // "The register": the lever sits on a cracked slab. Walking across it pulls the far bridge down,
+    // and the slab breaks behind you: there is no second try. Jump the lever while you are on the slab.
+    // The register is up on the wall's ledge: climb first.
+    id: 'PNT-4', ch: 0, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 520, h: 140 },
+      { id: 'pr', x: 140, y: 380, w: 200 },
+      { id: 'cs', x: 520, y: 760, w: 360, crumble: true },
+      { id: 'is', x: 880, y: 760, w: 300, h: 140 },
+      { id: 'br', x: 1180, y: 760, w: 380, move: { dy: 340, speed: 700, u0: 0 } },
+      { id: 'ex', x: 1560, y: 760, w: 440, h: 140 },
+    ],
+    stairs: [{ id: 'w1', x: 420, y: 560, len: 400, ang: 90, kind: 'static' }],
+    levers: [{ x: 700, plat: 'cs', type: 'pass', actions: [{ plat: 'br', op: 'toggle' }] }],
+    memory: { id: 'pnt_register', x: 240, y: 335 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
+  },
+  {
+    // "The diary" (end of chapter 1): one idea after another. Climb the wall to the crate; drop it on the
+    // pedal so the lift stays up; from the lift hang under the stair and walk round its end; from the top
+    // of the stair, the diary.
+    id: 'PNT-5', ch: 0, w: 2100, h: 900,
+    spawn: { x: 120, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 1700, h: 140 },
+      { id: 'h1', x: 470, y: 300, w: 300 },
+      { id: 'lf', x: 1280, y: 760, w: 150, move: { dy: -160, speed: 170 } },
+      { id: 'pd', x: 1720, y: 225, w: 380, h: 26 },
+    ],
+    stairs: [
+      { id: 'w1', x: 420, y: 550, len: 420, ang: 90, kind: 'static' },
+      { id: 's1', x: 1430, y: 372, len: 460, ang: 0, kind: 'static' },
+    ],
+    crates: [{ id: 'c1', x: 690, y: 300 }],
+    plates: [{ x: 820, plat: 'g1', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'pnt_diary', x: 1820, y: 180 },
+    exit: { x: 2045, y: -35, w: 120, h: 270 },
+  },
+  {
+    // "The dress": one crate, two jobs. It is the only step up to the dress, and the only weight
+    // for the pedal in the pit that raises the bridge. Once it drops in the pit it never comes out:
+    // use it as a step first.
+    id: 'BAL-1', ch: 1, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 900, h: 140 },
+      { id: 'pf', x: 900, y: 804, w: 48, h: 96 },
+      { id: 'g2', x: 948, y: 760, w: 252, h: 140 },
+      { id: 'br', x: 1200, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'pd', x: 560, y: 560, w: 200 },
+      { id: 'ex', x: 1500, y: 760, w: 500, h: 140 },
+    ],
+    crates: [{ id: 'c1', x: 300, y: 760 }],
+    plates: [{ x: 924, plat: 'pf', w: 40, actions: [{ plat: 'br', op: 'on' }] }],
+    memory: { id: 'bal_dress', x: 680, y: 515 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
+  },
+  {
+    id: 'BAL-2', ch: 1, w: 1600, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 400, h: 140 },
+      { id: 'pt', x: 960, y: 420, w: 250 },
+      { id: 'pe', x: 1320, y: 520, w: 280, h: 380 },
+    ],
+    stairs: [{ id: 's1', x: 680, y: 600, len: 480, ang: 0, kind: 'weight', rest: 0, min: -42, max: 42 }],
+    memory: { id: 'bal_ticket', x: 1100, y: 378 },
+    exit: { x: 1545, y: 280, w: 120, h: 250 },
+  },
+  {
+    id: 'BAL-T1', ch: 1, w: 2400, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 400, h: 200 },
+      { id: 'pm1', x: 440, y: 700, w: 160, move: { mode: 'loop', dx: 300, speed: 120, active: true } },
+      { id: 'pm2', x: 1000, y: 650, w: 160, move: { mode: 'loop', dy: -250, speed: 100, active: true } },
+      { id: 'g2', x: 1240, y: 470, w: 300 },
+      { id: 'g3', x: 2060, y: 600, w: 340, h: 300 },
+    ],
+    stairs: [{ id: 's1', x: 1800, y: 520, len: 440, ang: 0, kind: 'weight', rest: 0, min: -30, max: 30 }],
+    // puzzle: pm1 and pm2 share the same period and pm2 is always too high when pm1 arrives.
+    // The lever at the start freezes/unfreezes pm2: stop it at mid height, then cross.
+    levers: [{ x: 300, plat: 'g1', actions: [{ plat: 'pm2', op: 'toggle' }] }],
+    exit: { x: 2345, y: 340, w: 120, h: 270 },
+    plan: ['L0x2', 'X'],
+  },
+  {
+    // The weight of a step: the stair turns only while Hazop stands on the pedal.
+    // Step off when it points the right way; it stays there.
+    id: 'BAL-T3', ch: 1, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 640, h: 140 },
+      { id: 'h', x: 1250, y: 380, w: 550, h: 520 },
+    ],
+    stairs: [
+      { id: 's1', x: 1000, y: 560, len: 480, ang: 60, kind: 'rot', on: false, dir: -1, speed: 30 },
+    ],
+    plates: [{ x: 300, plat: 'g1', actions: [{ stair: 's1', on: true }] }],
+    exit: { x: 1745, y: 120, w: 120, h: 270 },
+    plan: ['Q0', 'X'],
+  },
+  {
+    // "The tea": two pedals, one crate. The crate on the first pedal raises the first bridge, but the
+    // crate is needed on the second pedal too. The padlock lever (behind you, at the start) keeps a bridge
+    // exactly as it is: lock the first bridge up, then take the crate across.
+    id: 'BAL-3', ch: 1, w: 2100, h: 900,
+    spawn: { x: 180, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 760, h: 140 },
+      { id: 'b1', x: 760, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'is', x: 1060, y: 760, w: 300, h: 140 },
+      { id: 'b2', x: 1360, y: 1100, w: 300, move: { dy: -340, speed: 600 } },
+      { id: 'ex', x: 1660, y: 760, w: 440, h: 140 },
+      { id: 'pt', x: 1150, y: 560, w: 160 },
+    ],
+    crates: [{ id: 'c1', x: 420, y: 760 }],
+    plates: [
+      { x: 690, plat: 'g1', actions: [{ plat: 'b1', op: 'on' }] },
+      { x: 1250, plat: 'is', actions: [{ plat: 'b2', op: 'on' }] },
+    ],
+    levers: [{ x: 60, plat: 'g1', actions: [{ plat: 'b1', lock: true }] }],
+    memory: { id: 'bal_tea', x: 1230, y: 515 },
+    exit: { x: 2045, y: 500, w: 120, h: 270 },
+    plan: ['C:c1@690', 'L0', 'C:c1@1250', 'M', 'X'],
+  },
+  {
+    // "The tie": a seesaw tips under Hazop's weight, so its high end is never high while he stands on it.
+    // Tip it, step off onto the padlock lever while it is still tipped: it stays locked that way. Then climb it.
+    id: 'BAL-4', ch: 1, w: 1900, h: 900,
+    spawn: { x: 100, y: 640 },
+    platforms: [
+      { id: 'g1', x: 0, y: 640, w: 400, h: 260 },
+      { id: 'pl', x: 400, y: 790, w: 70, h: 110 },
+      { id: 'pt', x: 1060, y: 420, w: 220 },
+      { id: 'pe', x: 1420, y: 360, w: 480, h: 540 },
+    ],
+    stairs: [
+      { id: 's1', x: 720, y: 640, len: 540, ang: 0, kind: 'weight', rest: 0, min: -28, max: 28, gain: 3 },
+    ],
+    levers: [{ x: 440, plat: 'pl', actions: [{ stair: 's1', lock: true }] }],
+    memory: { id: 'bal_tie', x: 1170, y: 375 },
+    exit: { x: 1845, y: 100, w: 120, h: 270 },
+  
+  },
+  {
+    // "Only once": three rusty one-way levers in a row, two bridges. Order matters, and
+    // so does what you leave untouched: walking over them in line gets it wrong.
+    //   L1: bridge 1 up, bridge 2 down   L2: bridge 2 up   L3: bridge 1 down
+    // Solution: jump L2 and L3, press L1, come back for L2 (jumping L3 again).
+    id: 'BAL-T2', ch: 1, w: 1600, h: 900,
+    spawn: { x: 80, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 600, h: 200 },
+      { id: 'b1', x: 600, y: 1100, w: 300, move: { dy: -400, speed: 340 } },
+      { id: 'i1', x: 900, y: 700, w: 200, h: 200 },
+      { id: 'b2', x: 1100, y: 1100, w: 300, move: { dy: -400, speed: 340 } },
+      { id: 'g2', x: 1400, y: 700, w: 200, h: 200 },
+    ],
+    levers: [
+      { x: 220, plat: 'g1', type: 'once', actions: [{ plat: 'b2', op: 'on' }] },
+      { x: 340, plat: 'g1', type: 'once', actions: [{ plat: 'b1', op: 'off' }] },
+      { x: 460, plat: 'g1', type: 'once', actions: [{ plat: 'b1', op: 'on' }, { plat: 'b2', op: 'off' }] },
+    ],
+    exit: { x: 1545, y: 440, w: 120, h: 270 },
+  },
+  {
+    // "The photo": the hourglass lever raises the bridge only for a few seconds: enough to reach the photo,
+    // not to come back. The padlock lever behind you can keep the bridge up for good, if you lock it in time.
+    id: 'BAL-5', ch: 1, w: 2000, h: 900,
+    spawn: { x: 300, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 900, h: 140 },
+      { id: 'br', x: 900, y: 1100, w: 420, move: { dy: -340, speed: 700 } },
+      { id: 'is', x: 1320, y: 760, w: 680, h: 140 },
+    ],
+    levers: [
+      { x: 820, plat: 'g1', type: 'timer', time: 5, actions: [{ plat: 'br', op: 'on' }] },
+      { x: 60, plat: 'g1', actions: [{ plat: 'br', lock: true }] },
+    ],
+    memory: { id: 'bal_photo', x: 1900, y: 715 },
+    exit: { x: -65, y: 500, w: 120, h: 270 },
+    plan: ['L0', 'L1', 'M', 'X'],
+  },
+  {
+    // "The note": the pedal sends the lift up while something weighs on it. The crate sits on the lift.
+    // Push it off onto the pedal... from the lift, or the lift leaves without you.
+    id: 'JGT-1', ch: 2, w: 1700, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'lf', x: 700, y: 760, w: 200, move: { dy: -420, speed: 160 } },
+      { id: 'g2', x: 900, y: 760, w: 300, h: 140 },
+      { id: 'top', x: 900, y: 340, w: 800, h: 26 },
+    ],
+    crates: [{ id: 'c1', x: 820, y: 760 }],
+    plates: [{ x: 960, plat: 'g2', actions: [{ plat: 'lf', op: 'on' }] }],
+    memory: { id: 'jgt_note', x: 1300, y: 295 },
+    exit: { x: 1645, y: 80, w: 120, h: 270 },
+  },
+  {
+    id: 'JGT-2', ch: 2, w: 1600, h: 900,
+    spawn: { x: 100, y: 720 },
+    platforms: [
+      { id: 'g1', x: 0, y: 720, w: 500, h: 180 },
+      { id: 'g2', x: 1100, y: 620, w: 160 },
+      { id: 'pc', x: 1300, y: 1000, w: 160, move: { dy: -440, speed: 160 } },
+      { id: 'g3', x: 1500, y: 520, w: 100, h: 380 },
+    ],
+    stairs: [{ id: 's1', x: 800, y: 640, len: 520, ang: 30, kind: 'rot', on: true, dir: 1, speed: 40 }],
+    levers: [
+      { x: 400, plat: 'g1', actions: [{ stair: 's1', on: 'toggle' }] },
+      { x: 1180, plat: 'g2', actions: [{ plat: 'pc', op: 'toggle' }] },
+    ],
+    memory: { id: 'jgt_cross', x: 1380, y: 950, plat: 'pc' },
+    exit: { x: 1545, y: 260, w: 120, h: 270 },
+    plan: ['L1', 'M', 'X'],
+  },
+  {
+    // "The cube": the plate keeps the bridge up only while something presses it.
+    // Hazop cannot hold it and cross at the same time; the toy block can.
+    id: 'JGT-T1', ch: 2, w: 1800, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 900, h: 200 },
+      { id: 'br', x: 900, y: 1100, w: 350, move: { dy: -400, speed: 500 } },
+      { id: 'g2', x: 1250, y: 700, w: 550, h: 200 },
+    ],
+    crates: [{ id: 'c1', x: 320, y: 700 }],
+    plates: [{ x: 720, plat: 'g1', actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 1745, y: 440, w: 120, h: 270 },
+  },
+  {
+    // "The toy": the crate rolls along the shelf and drops through the first open trapdoor.
+    // Each padlocked lever on the floor opens the trapdoor right above it, for good. Only the last one
+    // is over the pedestal with the pedal: jump over the other two levers.
+    id: 'JGT-3', ch: 2, w: 2000, h: 900,
+    spawn: { x: 80, y: 760 },
+    platforms: [
+      { id: 'f', x: 0, y: 760, w: 1500, h: 140 },
+      { id: 'pe', x: 1200, y: 700, w: 80, h: 60 },
+      { id: 'st', x: 150, y: 640, w: 130 },
+      { id: 's0', x: 300, y: 520, w: 300 },
+      { id: 't1', x: 600, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's1', x: 680, y: 520, w: 220 },
+      { id: 't2', x: 900, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's2', x: 980, y: 520, w: 220 },
+      { id: 't3', x: 1200, y: 520, w: 80, move: { dy: 700, speed: 1400 } },
+      { id: 's3', x: 1280, y: 520, w: 120 },
+      { id: 'br', x: 1500, y: 1100, w: 260, move: { dy: -340, speed: 600 } },
+      { id: 'ex', x: 1760, y: 760, w: 240, h: 140 },
+    ],
+  
+    crates: [{ id: 'c1', x: 420, y: 520 }],
+    plates: [{ x: 1240, plat: 'pe', w: 60, actions: [{ plat: 'br', op: 'on' }] }],
+    levers: [
+      { x: 640, plat: 'f', type: 'once', actions: [{ plat: 't1', op: 'on' }] },
+      { x: 940, plat: 'f', type: 'once', actions: [{ plat: 't2', op: 'on' }] },
+      { x: 1310, plat: 'f', type: 'once', actions: [{ plat: 't3', op: 'on' }] },
+    ],
+    memory: { id: 'jgt_toy', x: 1340, y: 475 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
+    scripted: true,   // tools/script_jgt3.js
+  },
+  {
+    // "The guitar": alone on the chain plates, Hazop only sinks; with the crate on the other plate, his plate
+    // shoots up empty before he can step on it. The hourglass padlock freezes the chain for a while:
+    // freeze it, load the crate, step on your plate, and wait for the hourglass to run out.
+    id: 'JGT-4', ch: 2, w: 1900, h: 900,
+    spawn: { x: 170, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 640, h: 140 },
+      { id: 'pa', x: 640, y: 760, w: 180, balance: { with: 'pb', travel: 250, speed: 120 } },
+      { id: 'm', x: 820, y: 760, w: 300, h: 140 },
+      { id: 'pb', x: 1120, y: 760, w: 180 },
+      { id: 'h', x: 1360, y: 520, w: 540, h: 380 },
+    ],
+    crates: [{ id: 'c1', x: 380, y: 760 }],
+    levers: [{ x: 50, plat: 'g1', type: 'timer', time: 8, actions: [{ plat: 'pa', lock: true }] }],
+    memory: { id: 'jgt_guitar', x: 1500, y: 475 },
+    exit: { x: 1845, y: 260, w: 120, h: 270 },
+    scripted: true,   // tools/script_jgt4.js
+  },
+  {
+    // "The step": the way out is a little too high. The block sits on a shelf:
+    // push it off, then push it against the wall and climb on it.
+    id: 'JGT-T2', ch: 2, w: 1600, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 1250, h: 140 },
+      { id: 'sh', x: 300, y: 620, w: 220 },
+      { id: 'ge', x: 1250, y: 545, w: 350, h: 355 },
+    ],
+    crates: [{ id: 'c1', x: 440, y: 620 }],
+    exit: { x: 1545, y: 290, w: 120, h: 260 },
+  },
+  {
+    // "The travelling cube": the plate that holds the exit bridge is on an island.
+    // Load the block onto the ferry, travel with it, push it off onto the plate.
+    id: 'JGT-C', scripted: true,   // tools/script_jgtc.js
+    ch: 2, w: 2200, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 600, h: 200 },
+      { id: 'fm', x: 620, y: 700, w: 200, move: { mode: 'loop', dx: 560, speed: 110, active: true, pause: 1.6 } },
+      { id: 'i1', x: 1400, y: 700, w: 300, h: 200 },
+      { id: 'br', x: 1700, y: 1100, w: 300, move: { dy: -400, speed: 500 } },
+      { id: 'g2', x: 2000, y: 700, w: 200, h: 200 },
+    ],
+    crates: [{ id: 'c1', x: 420, y: 700 }],
+    plates: [{ x: 1580, plat: 'i1', actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 2145, y: 440, w: 120, h: 270 },
+  },
+  {
+    // Counterweight: two platforms hang on one chain. Alone, Hazop only sinks.
+    // Sink all the way down, pull the lever at the bottom: the crate drops on the other plate and lifts you.
+    id: 'JGT-B', ch: 2, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'pa', x: 760, y: 760, w: 200, balance: { with: 'pb', travel: 230, speed: 110 } },
+      { id: 'h', x: 1020, y: 400, w: 240 },
+      { id: 'pb', x: 1290, y: 760, w: 130 },
+      { id: 'td', x: 1285, y: 300, w: 140, move: { dy: 700, speed: 1400 } },
+      { id: 'ex', x: 1440, y: 400, w: 560, h: 500 },
+    ],
+    crates: [{ id: 'c1', x: 1355, y: 300 }],
+    levers: [{ x: 900, plat: 'pa', type: 'once', actions: [{ plat: 'td', op: 'on' }] }],
+    exit: { x: 1945, y: 140, w: 120, h: 270 },
+    plan: ['L0', 'X'],
+  },
+  {
+    // "The plate" (end of chapter 3): one crate, three jobs in a row. On the pedal it holds the bridge up;
+    // the padlock keeps the bridge up once the crate leaves; over the trapdoor it becomes the weight that
+    // lifts Hazop on the chain plate, once he is standing on it.
+    id: 'JGT-5', ch: 2, w: 2300, h: 900,
+    spawn: { x: 170, y: 600 },
+    platforms: [
+      { id: 'g1', x: 0, y: 600, w: 760, h: 300 },
+      { id: 'b1', x: 760, y: 940, w: 320, move: { dy: -340, speed: 600 } },
+      { id: 'is', x: 1080, y: 600, w: 300, h: 26 },
+      { id: 'td', x: 1380, y: 600, w: 120, move: { dy: 500, speed: 1400 } },
+      { id: 'pa', x: 1380, y: 780, w: 120, balance: { with: 'pb', travel: 170, speed: 110 } },
+      { id: 'pb', x: 1640, y: 780, w: 180 },
+      { id: 'ex', x: 1900, y: 560, w: 400, h: 340 },
+    ],
+    crates: [{ id: 'c1', x: 420, y: 600 }],
+    plates: [{ x: 700, plat: 'g1', actions: [{ plat: 'b1', op: 'on' }] }],
+    levers: [
+      { x: 50, plat: 'g1', actions: [{ plat: 'b1', lock: true }] },
+      { x: 1760, plat: 'pb', type: 'once', actions: [{ plat: 'td', op: 'on' }] },
+    ],
+    memory: { id: 'jgt_plate', x: 2100, y: 515 },
+    exit: { x: 2245, y: 300, w: 120, h: 270 },
+    plan: ['C:c1@700', 'L0', 'C:c1@1440', 'P:pb', 'M', 'X'],
+  },
+  {
+    id: 'BTL-1', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 320, h: 140 },
+      { id: 'pb', x: 1520, y: 470, w: 220 },
+      { id: 'ge', x: 1760, y: 760, w: 240, h: 140 },
+    ],
+    stairs: [
+      { id: 's1', x: 520, y: 580, len: 380, ang: 180, kind: 'rot', on: true, dir: 1, speed: 34 },
+      { id: 's2', x: 900, y: 400, len: 380, ang: 0, kind: 'rot', on: true, dir: -1, speed: 34 },
+      { id: 's3', x: 1280, y: 580, len: 380, ang: 180, kind: 'rot', on: true, dir: 1, speed: 34 },
+    ],
+    memory: { id: 'btl_bell', x: 1630, y: 430 },
+    exit: { x: 1945, y: 500, w: 120, h: 270 },
+  },
+  {
+    id: 'BTL-2', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 480 },
+    platforms: [
+      { id: 'g1', x: 0, y: 480, w: 420, h: 420 },
+      { id: 'pc', x: 900, y: 800, w: 200, h: 100 },
+      { id: 'pe', x: 1600, y: 470, w: 400, h: 430 },
+    ],
+    stairs: [
+      { id: 's1', x: 680, y: 520, len: 460, ang: -10, kind: 'weight', rest: -10, min: -35, max: 35 },
+      { id: 's2', x: 1300, y: 600, len: 440, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
+    ],
+    memory: { id: 'btl_corks', x: 1000, y: 760 },
+    exit: { x: 1945, y: 210, w: 120, h: 270 },
+  },
+  {
+    // "The bridge that crumbles": the block is needed on the far side,
+    // but the bridge holds only one crossing. Push the block ahead of you.
+    id: 'BTL-T1', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 500, h: 200 },
+      { id: 'cb', x: 500, y: 700, w: 500, crumble: true },
+      { id: 'i1', x: 1000, y: 700, w: 500, h: 200 },
+      { id: 'ge', x: 1500, y: 485, w: 500, h: 415 },
+    ],
+    crates: [{ id: 'c1', x: 300, y: 700 }],
+    exit: { x: 1945, y: 230, w: 120, h: 260 },
+  },
+  {
+    // Dead weight: a floor that breaks can be useful. Leave the crate on the cracked slab and walk on:
+    // when the slab gives way the crate falls on the hanging plate, and the other plate rises to meet you.
+    id: 'BTL-B', ch: 3, w: 1900, h: 900,
+    spawn: { x: 100, y: 420 },
+    platforms: [
+      { id: 'g1', x: 0, y: 420, w: 700, h: 480 },
+      { id: 'cs', x: 700, y: 420, w: 200, crumble: true },
+      { id: 'pb', x: 720, y: 760, w: 160, balance: { with: 'pa', travel: 330, speed: 120 } },
+      { id: 'l2', x: 900, y: 420, w: 200 },
+      { id: 'pa', x: 1180, y: 760, w: 180 },
+      { id: 'ex', x: 1440, y: 420, w: 460, h: 480 },
+    ],
+    crates: [{ id: 'c1', x: 480, y: 420 }],
+    exit: { x: 1845, y: 160, w: 120, h: 270 },
+    plan: ['P:l2', 'X'],
+  },
+  {
+    id: 'BTL-3', ch: 3, w: 2400, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 300, h: 140 },
+      { id: 'pm1', x: 340, y: 760, w: 140, move: { mode: 'loop', dy: -420, speed: 110, active: true } },
+      { id: 'ph', x: 520, y: 300, w: 300 },
+      { id: 'pn', x: 1360, y: 640, w: 200 },
+      { id: 'pm2', x: 1600, y: 500, w: 140, move: { mode: 'loop', dx: 360, speed: 120, active: true } },
+      { id: 'ge', x: 2140, y: 500, w: 260, h: 400 },
+    ],
+    stairs: [{ id: 's1', x: 1080, y: 520, len: 440, ang: 90, kind: 'rot', on: false, dir: 1, speed: 32 }],
+    levers: [{ x: 700, plat: 'ph', actions: [{ stair: 's1', on: 'toggle', invert: true }] }],
+    memory: { id: 'btl_neon', x: 1460, y: 600 },
+    exit: { x: 2345, y: 240, w: 120, h: 270 },
+    plan: ['L0', 'M', 'X'],
+  },
+  {
+    id: 'BTL-4', ch: 3, w: 3000, h: 900,
+    spawn: { x: 100, y: 700 },
+    platforms: [
+      { id: 'g1', x: 0, y: 700, w: 360, h: 200 },
+      { id: 'pm', x: 1340, y: 400, w: 240 },
+      { id: 'pb', x: 1600, y: 950, w: 400, move: { dy: -550, speed: 260 } },
+      { id: 'pc', x: 2000, y: 400, w: 240 },
+      { id: 'ge', x: 2800, y: 700, w: 200, h: 200 },
+    ],
+    stairs: [
+      { id: 's1', x: 600, y: 640, len: 440, ang: 0, kind: 'weight', rest: 0, min: -30, max: 30 },
+      { id: 's2', x: 1060, y: 500, len: 440, ang: 180, kind: 'rot', on: true, dir: -1, speed: 30 },
+      { id: 's3', x: 2520, y: 520, len: 440, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30 },
+    ],
+    levers: [{ x: 1460, plat: 'pm', actions: [{ plat: 'pb', op: 'toggle' }] }],
+    memory: { id: 'btl_coins', x: 2120, y: 360 },
+    exit: { x: 2945, y: 440, w: 120, h: 270 },
+    plan: ['L0', 'M', 'X'],
+  },
+  {
+    // "Hourglass": the timed lever raises the bridge for six seconds. The lift
+    // is the only way up: wait for it to be down before turning the hourglass.
+    id: 'BTL-T2', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 700, h: 140 },
+      { id: 'lift', x: 720, y: 760, w: 140, move: { mode: 'loop', dy: -400, speed: 160, active: true } },
+      { id: 'h', x: 880, y: 360, w: 320 },
+      { id: 'br', x: 1200, y: 1100, w: 400, move: { dy: -740, speed: 900 } },
+      { id: 'ex', x: 1600, y: 360, w: 400, h: 540 },
+    ],
+    levers: [{ x: 600, plat: 'g1', type: 'timer', time: 6, actions: [{ plat: 'br', op: 'on' }] }],
+    exit: { x: 1945, y: 100, w: 120, h: 270 },
+  },
+  {
+    // "Gears": the first stair turns only while Hazop rides it, and it drives the second.
+    // Ride it until the second lies flat, then step off: both stop where they are.
+    id: 'BTL-G', ch: 3, w: 1800, h: 900,
+    spawn: { x: 100, y: 760 },
+    platforms: [
+      { id: 'g1', x: 0, y: 760, w: 300, h: 140 },
+      { id: 'pm', x: 720, y: 560, w: 60 },
+      { id: 'pe', x: 1250, y: 450, w: 550, h: 450 },
+    ],
+    stairs: [
+      { id: 's1', x: 500, y: 600, len: 400, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30, ride: true },
+      { id: 's2', x: 1000, y: 450, len: 400, ang: 90, link: 's1', ratio: -0.5 },
+    ],
+    exit: { x: 1745, y: 190, w: 120, h: 270 },
+  },
+  {
+    id: 'BTL-5', ch: 3, w: 2000, h: 900,
+    spawn: { x: 100, y: 780 },
+    platforms: [
+      { id: 'g1', x: 0, y: 780, w: 300, h: 120 },
+      { id: 'p1', x: 760, y: 440, w: 120 },
+      { id: 'p2', x: 1400, y: 820, w: 200, h: 80 },
+      { id: 'pl', x: 1640, y: 820, w: 140, move: { dy: -500, speed: 150 } },
+      { id: 'pb', x: 1820, y: 320, w: 180 },
+    ],
+    stairs: [
+      { id: 's1', x: 520, y: 600, len: 420, ang: 180, kind: 'rot', on: true, dir: 1, speed: 30 },
+      { id: 's2', x: 1110, y: 560, len: 420, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30 },
+    ],
+    levers: [
+      { x: 820, plat: 'p1', actions: [{ stair: 's1', invert: true }, { stair: 's2', invert: true }] },
+      { x: 1500, plat: 'p2', actions: [{ plat: 'pl', op: 'toggle' }] },
+    ],
+    memory: { id: 'btl_bottle', x: 1910, y: 280 },
+    exit: { x: 1945, y: 60, w: 120, h: 270 },
+    plan: ['L1', 'M', 'X'],
+  },
+
+  // ---------------- EPILOGUE ----------------
+  {
+    // The clock: climb, counterweight, then wind the hands. The last memory sits on top of the tower.
+    id: 'EPL-1', ch: 4, w: 2700, h: 900, final: true,
+    spawn: { x: 100, y: 780 },
+    platforms: [
+      { id: 'g1', x: 0, y: 780, w: 560, h: 120 },
+      { id: 'l1', x: 640, y: 460, w: 280 },
+      { id: 'pa', x: 920, y: 780, w: 120, balance: { with: 'pb', travel: 260, speed: 90 } },
+      { id: 'pb', x: 1080, y: 720, w: 180 },
+      { id: 'p2', x: 1300, y: 460, w: 160, h: 26 },
+      { id: 'pm', x: 1880, y: 260, w: 60 },
+      { id: 'pe', x: 2410, y: 150, w: 290, h: 750 },
+    ],
+    crates: [{ id: 'c1', x: 760, y: 460 }],
+    stairs: [
+      { id: 'w1', x: 600, y: 600, len: 360, ang: 90, kind: 'static' },
+      { id: 's1', x: 1660, y: 300, len: 400, ang: 0, kind: 'rot', on: true, dir: 1, speed: 30, ride: true },
+      { id: 's2', x: 2160, y: 150, len: 400, ang: 90, link: 's1', ratio: -0.5 },
+    ],
+    memory: { id: 'epl_clock', x: 2560, y: 105 },
+    exit: null,
+    plan: ['P:p2', 'M'],
+  },
+];
+
+
+// ---- engine.js ----
+// ============================================================
+// STAIRWAYS — core simulation (deterministic, no DOM access)
+// ============================================================
+
+const PHYS = {
+  G: 2000,            // gravity px/s^2
+  MAX_FALL: 1300,
+  WALK: 250,          // ground speed
+  AIR_ACC: 1900,
+  STAIR_WALK: 190,
+  JUMP: 830,
+  COYOTE: 0.09,
+  JBUF: 0.12,
+  PH: 70,             // player height
+  PW: 13,             // player half width
+  ST: 28,             // stair slab thickness
+  STAIR_COOLDOWN: 0.28,
+  DT: 1 / 120,
+  DEATH_MARGIN: 160,
+};
+
+const DEG = Math.PI / 180;
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function sign(v) { return v > 0 ? 1 : v < 0 ? -1 : 0; }
+
+// ---------- world construction ----------
+function createWorld(room, opts) {
+  opts = opts || {};
+  const w = {
+    room,
+    t: 0,
+    memoryTaken: !!opts.memoryTaken,
+    exitOpen: !!opts.memoryTaken || !room.memory,
+    platforms: [],
+    stairs: [],
+    levers: [],
+    player: null,
+    events: [],
+    done: false,
+  };
+  for (const p of room.platforms) {
+    const m = p.move;
+    w.platforms.push({
+      id: p.id, x0: p.x, y0: p.y, w: p.w, h: p.h || 26,
+      x: p.x, y: p.y, vx: 0, vy: 0,
+      move: m ? {
+        dx: m.dx || 0, dy: m.dy || 0, speed: m.speed || 120,
+        mode: m.mode || 'toggle', // 'toggle' | 'loop'
+        u: m.u0 || 0, target: m.u0 || 0, active: !!m.active, dir: 1, pause: m.pause || 0, wait: 0,
+      } : null,
+      kind: p.kind || 'slab',
+      crumble: !!p.crumble, touched: false, shake: 0, gone: false, fallY: 0,
+      balD: p.balance || room.platforms.some(q => q.balance && q.balance.with === p.id) ? 0 : null,
+    });
+  }
+  // balance pairs: two platforms hung on one chain over a pulley. Weight on one lowers it and
+  // raises the other by the same amount. Hazop weighs 1, a crate 2; unloaded, they level out.
+  w.balances = [];
+  for (const p of room.platforms) if (p.balance) {
+    const b = p.balance;
+    w.balances.push({ a: p.id, b: b.with, travel: b.travel || 150, speed: b.speed || 120, d: b.d0 || 0 });
+  }
+  // crates: pushable blocks that behave as dynamic platforms
+  for (const c of room.crates || []) {
+    w.platforms.push({
+      id: c.id, x0: c.x - 22, y0: c.y - 44, w: 44, h: 44, x: c.x - 22, y: c.y - 44, vx: 0, vy: 0,
+      move: null, kind: 'crate', cvy: 0, support: null, crumble: false, gone: false,
+    });
+  }
+  w.plates = [];
+  for (const pl of room.plates || []) w.plates.push({ x: pl.x, plat: pl.plat, dx: 0, w: pl.w || 70, actions: pl.actions || [], down: false, anim: 0 });
+  for (const s of room.stairs || []) {
+    w.stairs.push({
+      id: s.id, x: s.x, y: s.y, len: s.len || 440,
+      ang: (s.ang || 0) * DEG, angVel: 0,
+      kind: s.kind || 'rot', // rot | weight | static
+      on: !!s.on, dir: s.dir || 1, speed: (s.speed || 28) * DEG,
+      min: (s.min != null ? s.min : -40) * DEG, max: (s.max != null ? s.max : 40) * DEG,
+      rest: (s.rest != null ? s.rest : (s.ang || 0)) * DEG,
+      steps: s.steps || 12,
+      flip: !!s.flip,
+      ride: !!s.ride,                 // rotates only while Hazop is on it
+      link: s.link || null, ratio: s.ratio != null ? s.ratio : -1, // geared to another stair
+      ang0: (s.ang || 0) * DEG,
+      gain: s.gain || 1,
+    });
+  }
+  // geared stairs are updated after the stair they follow
+  w.stairs.sort((a, b) => (a.link ? 1 : 0) - (b.link ? 1 : 0));
+  for (const l of room.levers || []) {
+    w.levers.push({ hits: 0, x: l.x, plat: l.plat, dx: 0, state: !!l.state, inside: false, actions: l.actions || [], anim: l.state ? 1 : 0,
+      type: l.type || 'switch', time: l.time || 5, timer: 0, locked: false });
+  }
+  for (const L of w.levers) {
+    const p = w.platforms.find(p => p.id === L.plat);
+    L.dx = L.x - p.x0;
+  }
+  for (const pl of w.plates) { const p = w.platforms.find(p => p.id === pl.plat); pl.dx = pl.x - p.x0; }
+  if (room.memory) {
+    const m = room.memory;
+    w.mem = { x: m.x, y: m.y, dx: 0, dy: 0, plat: m.plat };
+    if (m.plat) { const p = w.platforms.find(p => p.id === m.plat); w.mem.dx = m.x - p.x0; w.mem.dy = m.y - p.y0; }
+  }
+  const sp = room.spawn;
+  w.player = {
+    x: sp.x, y: sp.y, vx: 0, vy: 0, state: 'air', facing: 1,
+    plat: null, stair: null, s: 0, side: 1, ux: 0, uy: -1,
+    coyote: 0, jbuf: 0, cool: {}, lockMove: 0, lockSign: 0,
+    walkPhase: 0, airTime: 0, landed: false,
+  };
+  return w;
+}
+
+// ---------- helpers ----------
+function stairTN(st) {
+  const c = Math.cos(st.ang), s = Math.sin(st.ang);
+  return { tx: c, ty: s, nx: s, ny: -c }; // n = "top" (teeth) side
+}
+function stairFeetOffset(side) { return side > 0 ? PHYS.ST / 2 - 3 : PHYS.ST / 2; }
+
+function platById(w, id) { return w.platforms.find(p => p.id === id); }
+function stairById(w, id) { return w.stairs.find(s => s.id === id); }
+
+// ---------- lever actions ----------
+function invertAction(a) {
+  const r = Object.assign({}, a);
+  if (a.on === true) r.on = false; else if (a.on === false) r.on = true;
+  if (a.op === 'on') r.op = 'off'; else if (a.op === 'off') r.op = 'on';
+  if (a.dir) { delete r.dir; r.invert = true; }
+  if (a.lock != null) r.lock = !a.lock;
+  return r; // 'toggle' and 'invert' are their own inverse
+}
+function runActions(w, actions, undo) {
+  if (undo) actions = actions.map(invertAction).reverse();
+  for (const a of actions) {
+    if (a.stair != null) {
+      const st = stairById(w, a.stair);
+      if (!st) continue;
+      if (a.on === 'toggle') st.on = !st.on; else if (a.on != null) st.on = a.on;
+      if (a.invert) st.dir = -st.dir;
+      if (a.dir) st.dir = a.dir;
+      if (a.lock != null) { st.locked = a.lock; st.angVel = 0; }   // padlock on a seesaw: it stays at the angle it has
+    }
+    if (a.plat != null) {
+      const p = platById(w, a.plat);
+      if (p && p.balD != null && a.lock != null) {   // padlock on a balance pair: the chain stops
+        for (const B of w.balances) if (B.a === p.id || B.b === p.id) B.locked = a.lock;
+        continue;
+      }
+      if (!p || !p.move) continue;
+      const m = p.move;
+      if (a.lock != null) { m.locked = a.lock; continue; }   // padlock: the platform stays where it is
+      if (m.mode === 'toggle') {
+        if (a.op === 'toggle' || !a.op) m.target = m.target > 0.5 ? 0 : 1;
+        else if (a.op === 'on') m.target = 1; else if (a.op === 'off') m.target = 0;
+      } else {
+        if (a.op === 'toggle' || !a.op) m.active = !m.active;
+        else if (a.op === 'on') m.active = true; else if (a.op === 'off') m.active = false;
+      }
+    }
+  }
+}
+
+// ---------- stepping ----------
+function stepWorld(w, input, dt) {
+  dt = dt || PHYS.DT;
+  const ev = w.events;
+  const P = w.player;
+  w.t += dt;
+
+  // --- balance pairs (loads from the previous step) ---
+  for (const B of w.balances) {
+    const A = platById(w, B.a), C = platById(w, B.b);
+    const load = q => {
+      let n = P.state === 'ground' && P.plat === q.id ? 1 : 0;
+      for (const c of w.platforms) if (c.kind === 'crate' && c.sup === q.id) n += 2;   // only a crate actually resting on it
+      return n;
+    };
+    if (B.locked) { A.balD = B.d; C.balD = -B.d; continue; }
+    const diff = load(A) - load(C);
+    const target = diff > 0 ? B.travel : diff < 0 ? -B.travel : 0;
+    const step = B.speed * dt;
+    const before = B.d;
+    B.d = B.d < target ? Math.min(target, B.d + step) : Math.max(target, B.d - step);
+    if (before !== B.d && (B.d === target)) ev.push({ type: 'balstop', x: A.x + A.w / 2, y: A.y });
+    A.balD = B.d; C.balD = -B.d;
+  }
+
+  // --- platforms ---
+  for (const p of w.platforms) {
+    const ox = p.x, oy = p.y;
+    const m = p.move;
+    if (m && !m.locked) {
+      const L = Math.hypot(m.dx, m.dy) || 1;
+      const du = (m.speed / L) * dt;
+      if (m.mode === 'toggle') {
+        if (m.u < m.target) m.u = Math.min(m.target, m.u + du);
+        else if (m.u > m.target) m.u = Math.max(m.target, m.u - du);
+      } else if (m.active) {
+        if (m.wait > 0) m.wait -= dt;          // dwell at the ends of the run
+        else {
+          m.u += du * m.dir;
+          if (m.u >= 1) { m.u = 1; m.dir = -1; m.wait = m.pause; } else if (m.u <= 0) { m.u = 0; m.dir = 1; m.wait = m.pause; }
+        }
+      }
+      // smooth easing for position
+      const e = m.mode === 'toggle' ? m.u * m.u * (3 - 2 * m.u) : m.u;
+      p.x = p.x0 + m.dx * e; p.y = p.y0 + m.dy * e;
+    } else if (p.balD != null) p.y = p.y0 + p.balD;
+    p.vx = (p.x - ox) / dt; p.vy = (p.y - oy) / dt;
+    p.mdx = p.x - ox; p.mdy = p.y - oy;
+  }
+
+  // --- stairs ---
+  for (const st of w.stairs) {
+    st.prevAng = st.ang;
+    if (st.link) {
+      const L = stairById(w, st.link);
+      st.angVel = L.angVel * st.ratio;
+      st.ang = st.ang0 + (L.ang - L.ang0) * st.ratio;
+    } else if (st.kind === 'rot') {
+      const riding = P.state === 'stair' && P.stair === st.id;
+      st.angVel = st.on && (!st.ride || riding) ? st.dir * st.speed : 0;
+      st.ang += st.angVel * dt;
+    } else if (st.kind === 'weight' && st.locked) {
+      st.angVel = 0;
+    } else if (st.kind === 'weight') {
+      let torque = 0;
+      const g = st.gain;                       // 'gain' > 1: a lighter seesaw that answers at once
+      if (P.state === 'stair' && P.stair === st.id) torque = (P.x - st.x) * 0.0045 * g * g; // px -> rad/s^2
+      const spring = (st.rest - st.ang) * 0.8 * g;
+      st.angVel += (torque + spring - st.angVel * 1.4 * g) * dt;
+      st.ang += st.angVel * dt;
+      if (st.ang < st.min) { st.ang = st.min; st.angVel = 0; }
+      if (st.ang > st.max) { st.ang = st.max; st.angVel = 0; }
+    }
+  }
+
+  // --- crumbling platforms ---
+  for (const p of w.platforms) {
+    if (!p.crumble || p.gone) continue;
+    const onIt = P.state === 'ground' && P.plat === p.id;
+    if (onIt) p.touched = true;
+    else if (p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+    if (p.shake > 0) { p.shake += dt; if (p.shake > 0.45) { p.gone = true; ev.push({ type: 'crumbled', x: p.x + p.w / 2, y: p.y }); } }
+  }
+  // --- crates: gravity, resting, carried by movers ---
+  for (const c of w.platforms) {
+    if (c.kind !== 'crate') continue;
+    const ox = c.x, oy = c.y;
+    let sup = null;
+    for (const q of w.platforms) {
+      if (q === c || q.gone) continue;
+      if (c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2 && Math.abs((c.y + c.h) - q.y) < 2) { sup = q; break; }
+    }
+    c.sup = sup ? sup.id : null;
+    if (sup) { c.cvy = 0; c.x += sup.mdx || 0; c.y = sup.y - c.h; }
+    else {
+      c.cvy = Math.min(PHYS.MAX_FALL, c.cvy + PHYS.G * dt);
+      const bottom0 = c.y + c.h; c.y += c.cvy * dt;
+      for (const q of w.platforms) {
+        if (q === c || q.gone) continue;
+        if (c.x + c.w > q.x + 2 && c.x < q.x + q.w - 2 && bottom0 <= q.y - (q.mdy || 0) + 1 && c.y + c.h >= q.y) { c.y = q.y - c.h; c.cvy = 0; ev.push({ type: 'crateland', x: c.x + c.w / 2, y: q.y }); break; }
+      }
+      if (c.y > w.room.h + 200) { c.x = c.x0; c.y = c.y0 - 200; c.cvy = 0; ev.push({ type: 'crateback' }); }
+    }
+    c.mdx = c.x - ox; c.mdy = c.y - oy;
+  }
+
+  // --- input buffers ---
+  const move = input.move || 0;
+  if (input.jump) P.jbuf = PHYS.JBUF; else P.jbuf = Math.max(0, P.jbuf - dt);
+  for (const k in P.cool) { P.cool[k] -= dt; if (P.cool[k] <= 0) delete P.cool[k]; }
+
+  if (P.state === 'stair') updateOnStair(w, P, move, dt, ev);
+  else updateGroundAir(w, P, move, dt, ev);
+
+  // --- levers ---
+  for (const L of w.levers) {
+    const p = platById(w, L.plat);
+    const lx = p.x + L.dx, ly = p.y;
+    const inside = P.state === 'ground' && P.plat === p.id && Math.abs(P.x - lx) < 24 && Math.abs(P.y - ly) < 3;
+    L.cool = Math.max(0, (L.cool || 0) - dt);
+    if (L.type === 'timer' && L.timer > 0) {
+      const before = Math.ceil(L.timer);
+      L.timer -= dt;
+      if (Math.ceil(L.timer) !== before && L.timer > 0) ev.push({ type: 'tick', x: lx, y: ly });
+      if (L.timer <= 0) { L.timer = 0; L.state = false; runActions(w, L.actions, true); ev.push({ type: 'timeup', x: lx, y: ly }); }
+    }
+    const usable = !L.locked && !(L.type === 'timer' && L.timer > 0);
+    let fire = inside && !L.inside && L.cool <= 0 && usable;
+    if (L.type === 'pass') {
+      // a 'pass' lever counts only when Hazop walks right across it: stepping on and backing off does nothing
+      fire = false;
+      const inZone = Math.abs(P.x - lx) < 24 && P.y > ly - 250 && P.y < ly + 6;
+      if (inZone && !L.zone) { L.entry = Math.sign((L.px != null ? L.px : P.x) - lx) || -1; L.touched = false; }
+      if (inZone && (inside || w.room._noSkip)) L.touched = true;   // _noSkip: test only (jumping over still counts)
+      if (!inZone && L.zone && L.touched && Math.sign(P.x - lx) !== L.entry) fire = true;
+      L.zone = inZone; L.px = P.x;
+    }
+    if (fire) {
+      L.cool = 0.7;
+      L.state = !L.state; L.hits++;
+      runActions(w, L.actions, !L.state); // switched back = undo
+      if (L.type === 'once') { L.locked = true; ev.push({ type: 'lock', x: lx, y: ly }); }
+      if (L.type === 'timer') L.timer = L.time;
+      ev.push({ type: 'lever', x: lx, y: ly, kind: L.type });
+    }
+    L.inside = inside;
+    L.anim += ((L.state ? 1 : 0) - L.anim) * Math.min(1, dt * 10);
+  }
+
+  // --- pressure plates: held down by Hazop or a crate ---
+  for (const pl of w.plates) {
+    const p = platById(w, pl.plat);
+    const px = p.x + pl.dx, py = p.y;
+    let down = P.state === 'ground' && P.plat === p.id && Math.abs(P.x - px) < pl.w / 2 + 6;
+    for (const c of w.platforms) if (c.kind === 'crate' && Math.abs(c.y + c.h - py) < 3 && c.x + c.w > px - pl.w / 2 && c.x < px + pl.w / 2) down = true;
+    if (down !== pl.down) { pl.down = down; runActions(w, pl.actions, !down); ev.push({ type: 'plate', down, x: px, y: py }); }
+    pl.anim += ((down ? 1 : 0) - pl.anim) * Math.min(1, dt * 14);
+  }
+
+  // --- memory ---
+  const mem = w.mem;
+  if (mem && mem.plat) { const p = platById(w, mem.plat); mem.x = p.x + mem.dx; mem.y = p.y + mem.dy; }
+  if (mem && !w.memoryTaken) {
+    const cx = P.x + P.ux * PHYS.PH * 0.45, cy = P.y + P.uy * PHYS.PH * 0.45;
+    if (Math.hypot(cx - mem.x, cy - mem.y) < 46 || Math.hypot(P.x - mem.x, P.y - mem.y) < 34) {
+      w.memoryTaken = true; w.exitOpen = true;
+      ev.push({ type: 'memory', id: w.room.memory.id, x: mem.x, y: mem.y });
+    }
+  }
+
+  // --- exit ---
+  const ex = w.room.exit;
+  if (w.exitOpen && ex && !w.done) {
+    const cx = P.x + P.ux * PHYS.PH * 0.45, cy = P.y + P.uy * PHYS.PH * 0.45;
+    if (cx > ex.x && cx < ex.x + ex.w && cy > ex.y && cy < ex.y + ex.h) {
+      w.done = true; ev.push({ type: 'exit' });
+    }
+  }
+
+  // --- death ---
+  if (!w.done && (P.y > w.room.h + PHYS.DEATH_MARGIN || P.y < -900 || P.x < -400 || P.x > w.room.w + 400)) {
+    w.done = true; w.dead = true; ev.push({ type: 'death' });
+  }
+}
+
+function updateGroundAir(w, P, move, dt, ev) {
+  const room = w.room;
+  // orientation relaxes to upright
+  P.ux = 0; P.uy = -1;
+  if (move) P.facing = move;
+
+  // carried by platform
+  if (P.state === 'ground' && P.plat != null) {
+    const p = platById(w, P.plat);
+    P.x += p.mdx || 0; P.y += p.mdy || 0;
+  }
+
+  // horizontal
+  const target = move * PHYS.WALK;
+  if (P.state === 'ground') {
+    P.vx = target;
+  } else {
+    const acc = PHYS.AIR_ACC * dt;
+    if (move) P.vx += clamp(target - P.vx, -acc, acc);
+    else P.vx *= Math.pow(0.35, dt); // gentle air drag
+  }
+
+  // jump
+  if (P.state === 'ground') P.coyote = PHYS.COYOTE; else P.coyote = Math.max(0, P.coyote - dt);
+  if (P.jbuf > 0 && P.coyote > 0) {
+    P.vy = -PHYS.JUMP;
+    if (P.plat != null) { const p = platById(w, P.plat); P.vy += Math.min(0, p.vy); P.vx += p.vx * 0.5; }
+    P.state = 'air'; P.plat = null; P.coyote = 0; P.jbuf = 0;
+    ev.push({ type: 'jump' });
+  }
+
+  // gravity
+  if (P.state !== 'ground') { P.vy = Math.min(PHYS.MAX_FALL, P.vy + PHYS.G * dt); P.airTime += dt; }
+  else P.vy = 0;
+
+  // move X (the sides of the room are walls: only the exit leads out)
+  P.x += P.vx * dt;
+  if (P.x < PHYS.PW) { P.x = PHYS.PW; if (P.vx < 0) P.vx = 0; }
+  if (P.x > w.room.w - PHYS.PW) { P.x = w.room.w - PHYS.PW; if (P.vx > 0) P.vx = 0; }
+  const PW = PHYS.PW, PH = PHYS.PH;
+  for (const p of w.platforms) {
+    if (p.gone) continue;
+    if (P.y > p.y + 0.5 && P.y - PH < p.y + p.h && P.x + PW > p.x && P.x - PW < p.x + p.w) {
+      if (p.kind === 'crate' && P.state === 'ground' && move && Math.abs(P.y - (p.y + p.h)) < 4) {
+        // push the crate (slower walk), unless something blocks it
+        const dir = move, pen = dir > 0 ? (P.x + PW) - p.x : p.x + p.w - (P.x - PW);
+        const step = dir * Math.min(pen, 150 * dt + 0.5);
+        let blocked = p.x + step < 0 || p.x + p.w + step > room.w;
+        for (const q of w.platforms) {
+          if (q === p || q.gone) continue;
+          if (p.y + p.h > q.y + 1 && p.y < q.y + q.h && p.x + step + p.w > q.x && p.x + step < q.x + q.w) { blocked = true; break; }
+        }
+        if (!blocked) { p.x += step; P.vx = dir * 150; p.pushT = (p.pushT || 0) + dt; if (p.pushT > 0.22) { p.pushT = 0; ev.push({ type: 'push' }); } }
+      }
+      if (P.state === 'air' && P.y - p.y < 24 && P.vy > -260) { // ledge assist
+        P.y = p.y; P.vy = 0; P.state = 'ground'; P.plat = p.id; P.x = Math.max(p.x + 2, Math.min(p.x + p.w - 2, P.x));
+        ev.push({ type: 'land', hard: false }); P.airTime = 0; continue;
+      }
+      if (P.vx > 0 || p.mdx < 0) { if (P.x < p.x + p.w / 2) P.x = p.x - PW; }
+      if (P.vx < 0 || p.mdx > 0) { if (P.x >= p.x + p.w / 2) P.x = p.x + p.w + PW; }
+    }
+  }
+  // room walls
+  if (P.x < PW) { P.x = PW; P.vx = 0; }
+  if (!(w.exitOpen && room.exit && room.exit.x >= room.w - 80) && P.x > room.w - PW) { P.x = room.w - PW; P.vx = 0; }
+
+  // move Y
+  const oy = P.y;
+  P.y += P.vy * dt;
+  let grounded = false;
+  if (P.state === 'ground') {
+    // stay glued if still above the platform
+    const p = platById(w, P.plat);
+    if (p && !p.gone && P.x + PW > p.x && P.x - PW < p.x + p.w) { P.y = p.y; grounded = true; }
+    else {
+      // look for another platform at same level
+      for (const q of w.platforms) {
+        if (q.gone) continue;
+        if (Math.abs(q.y - P.y) < 6 && P.x + PW > q.x && P.x - PW < q.x + q.w) { P.y = q.y; P.plat = q.id; grounded = true; break; }
+      }
+    }
+    if (!grounded) { P.state = 'air'; P.plat = null; P.airTime = 0; }
+  } else {
+    for (const p of w.platforms) {
+      if (p.gone) continue;
+      if (P.x + PW <= p.x || P.x - PW >= p.x + p.w) continue;
+      // landing: feet crossed the top surface (account for platform motion)
+      if (P.vy >= 0 && oy <= p.y - p.mdy + 1 && P.y >= p.y) {
+        P.y = p.y; P.vy = 0; P.state = 'ground'; P.plat = p.id; grounded = true;
+        ev.push({ type: 'land', hard: P.airTime > 0.45 });
+        P.airTime = 0;
+        break;
+      }
+      // head bump
+      if (P.vy < 0 && oy - PH >= p.y + p.h - 1 && P.y - PH < p.y + p.h) {
+        P.y = p.y + p.h + PH; P.vy = 0;
+      }
+    }
+  }
+
+  // walk cycle
+  if (P.state === 'ground' && move) {
+    const before = Math.floor(P.walkPhase / Math.PI);
+    P.walkPhase += dt * 11;
+    if (Math.floor(P.walkPhase / Math.PI) !== before) ev.push({ type: 'step', surface: 'stone' });
+  } else if (P.state === 'ground') P.walkPhase = 0;
+
+  // stair attachment (airborne only)
+  if (P.state === 'air') tryAttach(w, P, ev);
+}
+
+function tryAttach(w, P, ev) {
+  const PH = PHYS.PH, half = PHYS.ST / 2;
+  for (const st of w.stairs) {
+    if (P.cool[st.id]) continue;
+    const { tx, ty, nx, ny } = stairTN(st);
+    let hit = false;
+    for (let k = 0; k <= 4; k++) {
+      const sx = P.x, sy = P.y - PH * (k / 4);
+      const rx = sx - st.x, ry = sy - st.y;
+      const a = rx * tx + ry * ty, d = rx * nx + ry * ny;
+      if (Math.abs(a) <= st.len / 2 && Math.abs(d) <= half + 4) { hit = true; break; }
+    }
+    if (!hit) continue;
+    const cx = P.x - st.x, cy = P.y - PH / 2 - st.y;
+    const dc = cx * nx + cy * ny;
+    let side;
+    if (Math.abs(dc) > half) side = sign(dc);
+    else side = (P.vx * nx + P.vy * ny) < 0 ? 1 : -1;
+    const a = clamp(cx * tx + cy * ty, -st.len / 2 + 8, st.len / 2 - 8);
+    P.state = 'stair'; P.stair = st.id; P.s = a; P.side = side; P.plat = null; P.stairTime = 0;
+    P.lockMove = 0; P.lockSign = 0;
+    placeOnStair(P, st);
+    ev.push({ type: 'attach', hard: P.airTime > 0.45 });
+    P.airTime = 0;
+    return;
+  }
+}
+
+function placeOnStair(P, st) {
+  const { tx, ty, nx, ny } = stairTN(st);
+  const off = stairFeetOffset(P.side);
+  P.ux = nx * P.side; P.uy = ny * P.side;
+  P.x = st.x + tx * P.s + P.ux * off;
+  P.y = st.y + ty * P.s + P.uy * off;
+}
+
+function updateOnStair(w, P, move, dt, ev) {
+  const st = stairById(w, P.stair);
+  const { tx, ty } = stairTN(st);
+  const ox = P.x, oy = P.y;
+  // input mapping (locked while held, so rotating stairs don't flip controls mid-walk)
+  if (!move) { P.lockMove = 0; }
+  else if (move !== P.lockMove) {
+    P.lockMove = move;
+    const ux = P.side * Math.sin(st.ang), uy = P.side * -Math.cos(st.ang);
+    if (Math.abs(tx) > 0.3) P.lockSign = sign(tx) * move;
+    else { const rx = -uy, ry = ux; P.lockSign = sign(rx * tx + ry * ty) * move || move; }
+  }
+  let ds = 0;
+  if (move) ds = P.lockSign * PHYS.STAIR_WALK * dt;
+  const lim = st.len / 2 - 10;
+  // walking past the end of a stair wraps Hazop around it onto the other face
+  if (move && !w.room._noWrap && Math.sign(ds) === Math.sign(P.s) && Math.abs(P.s + ds) > lim && Math.abs(P.s) >= lim - 0.5 && P.jbuf <= 0) {
+    P.side = -P.side; P.lockSign = -P.lockSign; P.facing = -P.facing; ds = 0;
+    ev.push({ type: 'wrap', x: P.x, y: P.y });
+  }
+  const ns = clamp(P.s + ds, -lim, lim);
+  const moved = Math.abs(ns - P.s) > 0.01;
+  P.s = ns;
+  placeOnStair(P, st);
+  // facing: direction of travel in local frame
+  if (moved) {
+    const rx = -P.uy, ry = P.ux; // local right
+    P.facing = sign((tx * P.lockSign) * rx + (ty * P.lockSign) * ry) || P.facing;
+    const before = Math.floor(P.walkPhase / Math.PI);
+    P.walkPhase += dt * 11;
+    if (Math.floor(P.walkPhase / Math.PI) !== before) ev.push({ type: 'step', surface: 'stair' });
+  } else P.walkPhase = 0;
+
+  P.vx = (P.x - ox) / dt; P.vy = (P.y - oy) / dt;
+  // carried velocity from rotation only (walking contribution kept small)
+  P.stairTime = (P.stairTime || 0) + dt;
+  if (P.jbuf > 0 && P.stairTime >= 0.25) {
+    if (Math.abs(P.uy) < 0.5 && st.kind === 'static') {
+      // on a steep stair (a wall) the jump is a vault: up, pushing a little away from the wall;
+      // in the air Hazop can steer back over the top
+      P.vx = P.vx + P.ux * 240;
+      P.vy = Math.min(P.vy, 0) - PHYS.JUMP * 0.92;
+    } else {
+      const upness = clamp((-P.uy + 0.25) / 1.25, 0, 1);
+      const power = PHYS.JUMP * (0.3 + 0.7 * upness);
+      P.vx = P.vx + P.ux * power;
+      P.vy = P.vy + P.uy * power;
+    }
+    P.state = 'air'; P.cool[st.id] = PHYS.STAIR_COOLDOWN; P.stair = null; P.jbuf = 0; P.airTime = 0;
+    // in the air the body is upright again: shift so the feet stay continuous visually
+    ev.push({ type: 'jump', fromStair: true });
+  }
+}
+
+// ---------- snapshot (for solver/tests) ----------
+function cloneWorld(w) {
+  const c = {
+    room: w.room, t: w.t, mem: w.mem ? Object.assign({}, w.mem) : null, memoryTaken: w.memoryTaken, exitOpen: w.exitOpen, done: w.done, dead: w.dead,
+    platforms: w.platforms.map(p => Object.assign({}, p, { move: p.move ? Object.assign({}, p.move) : null })),
+    stairs: w.stairs.map(s => Object.assign({}, s)),
+    levers: w.levers.map(l => Object.assign({}, l)),
+    plates: w.plates.map(p => Object.assign({}, p)),
+    balances: (w.balances || []).map(b => Object.assign({}, b)),
+    player: Object.assign({}, w.player, { cool: Object.assign({}, w.player.cool) }),
+    events: [],
+  };
+  return c;
+}
+
+
+// ---- title.js ----
+// Title lettering: glyph outlines of 'Latin Modern Roman Dunhill' (GUST Font License),
+// embedded as vector paths so the game needs no external font.
+const TITLE_FONT = {"upm": 1000, "capH": 961, "g": {"A": {"w": 750, "d": "M718 0V31H701C638 31 629 40 621 72L396 973C392 989 389 994 375 994C361 994 357 991 353 973L136 103C128 72 112 31 31 31V0C52 1 92 3 132 3L247 0V31C194 32 165 58 165 86C165 90 165 92 169 107L223 325H469L531 76C532 70 534 63 534 63C534 31 472 31 445 31V0C481 3 550 3 588 3ZM461 356H231L346 814Z"}, "Y": {"w": 750, "d": "M740 930V961C709 959 674 958 643 958L529 961V930C580 929 597 904 597 883C597 875 595 870 591 860L404 432L207 884C205 888 202 898 202 902C202 930 254 930 280 930V961C244 958 174 958 136 958L9 961V930C93 930 95 924 111 888L331 384V78C331 42 329 31 252 31H228V0C264 3 335 3 374 3C413 3 484 3 520 0V31H497C420 31 417 41 417 80V384L627 865C651 919 698 930 740 930Z"}, "S": {"w": 556, "d": "M499 256C499 345 476 398 458 433C422 501 366 521 334 532L242 563C205 576 180 585 154 625C127 666 120 722 120 760C120 864 174 955 253 955C403 955 436 797 446 666C447 646 448 642 459 642C472 642 472 647 472 666V959C472 976 472 983 461 983C452 983 451 979 446 968L414 894C364 972 295 983 252 983C142 983 56 869 56 724C56 676 63 624 95 565C131 499 185 480 228 465L332 429C424 397 435 278 435 223C435 108 381 9 301 9C86 9 82 261 81 308C81 317 75 319 69 319C56 319 56 312 56 294V2C56 -15 56 -22 67 -22C75 -22 76 -20 82 -6C89 8 92 19 117 71C152 23 209 -22 302 -22C416 -22 499 104 499 256Z"}, "I": {"w": 361, "d": "M333 0V31H307C228 31 225 42 225 78V883C225 919 228 930 307 930H333V961C298 958 219 958 180 958C141 958 63 958 28 961V930H54C133 930 136 919 136 883V78C136 42 133 31 54 31H28V0C63 3 142 3 180 3C219 3 298 3 333 0Z"}, "T": {"w": 722, "d": "M685 730 666 955H55L36 730H61C75 891 90 924 241 924C259 924 285 924 295 922C316 918 316 907 316 884V79C316 45 316 31 211 31H171V0C212 3 314 3 360 3C406 3 509 3 550 0V31H510C405 31 405 45 405 79V884C405 904 405 918 423 922C434 924 461 924 480 924C631 924 646 891 660 730Z"}, "W": {"w": 1028, "d": "M1010 930V961C980 959 949 958 919 958L800 961V930C870 929 894 896 894 874C894 874 894 870 890 854L731 170H730L563 885L560 898C560 930 624 930 650 930V961C614 958 547 958 509 958L387 961V930C460 930 464 925 473 888L501 772L360 170H359L194 878C190 893 190 895 190 898C190 930 252 930 279 930V961C243 958 176 958 138 958L17 961V930C76 930 94 930 103 890L310 -1C313 -15 317 -22 328 -22C340 -22 343 -15 346 -2L513 715H514L681 -2C684 -15 687 -22 699 -22C710 -22 714 -15 717 -1L918 862C927 900 949 930 1010 930Z"}, "R": {"w": 736, "d": "M732 119C732 130 732 139 719 139C708 139 707 131 707 117C706 82 697 0 642 0C619 0 604 17 595 45C586 72 580 105 572 183L560 290C545 406 473 457 420 479C538 512 610 609 610 711C610 844 498 961 345 961H35V930H59C136 930 138 919 138 883V78C138 42 136 31 59 31H35V0C71 3 142 3 181 3C220 3 291 3 327 0V31H303C226 31 224 42 224 78V470H339C366 470 404 468 440 412C470 365 470 311 470 241C470 126 470 93 507 40C530 8 576 -22 638 -22C732 -22 732 111 732 119ZM507 711C507 657 504 599 470 555C456 536 414 492 330 492H224V890C224 913 224 925 246 928C256 930 283 930 302 930C356 930 417 930 466 874C505 829 507 764 507 711Z"}}};
+
+function drawTitleWord(ctx, text, cx, baseline, capPx, spacing, fill, shadow) {
+  const k = capPx / TITLE_FONT.capH, gap = spacing * capPx;
+  let w = 0; for (const ch of text) w += TITLE_FONT.g[ch].w * k + gap; w -= gap;
+  const draw = (dx, dy, col) => {
+    let x = cx - w / 2 + dx;
+    ctx.save(); ctx.fillStyle = col;
+    for (const ch of text) {
+      const g = TITLE_FONT.g[ch];
+      ctx.save(); ctx.translate(x, baseline + dy); ctx.scale(k, -k); ctx.fill(new Path2D(g.d)); ctx.restore();
+      x += g.w * k + gap;
+    }
+    ctx.restore();
+  };
+  if (shadow) draw(capPx * 0.04, capPx * 0.04, shadow);
+  draw(0, 0, fill);
+  return w;
+}
+
+// ---- render.js ----
+// ============================================================
+// STAIRWAYS — rendering (Canvas 2D, all vector / procedural)
+// ============================================================
+
+const VIEW_W = 1600, VIEW_H = 900;
+const COL = {
+  white: '#FFFFFF', yellow: '#FFFF92', mint: '#9EFCB2', green: '#76AE81', brown: '#402C2D',
+  ink: '#1b1515', inkHi: '#3b302d', red: '#c8302a', gray: '#8d8a84', letter: '#1d1515',
+};
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function shade(h, f) { // f: -1..1
+  const [r, g, b] = hexToRgb(h);
+  const m = f < 0 ? 0 : 255, k = Math.abs(f);
+  return `rgb(${Math.round(r + (m - r) * k)},${Math.round(g + (m - g) * k)},${Math.round(b + (m - b) * k)})`;
+}
+function rgba(h, a) { const [r, g, b] = hexToRgb(h); return `rgba(${r},${g},${b},${a})`; }
+
+// ---------- painterly helpers ----------
+function paintShape(ctx, R, pathFn, base, opt) {
+  opt = opt || {};
+  ctx.save();
+  ctx.beginPath(); pathFn(ctx); ctx.closePath();
+  ctx.fillStyle = base; ctx.fill();
+  ctx.clip();
+  const b = opt.bounds || [0, 0, 2600, 900];
+  const n = opt.n || Math.round((b[2] * b[3]) / 900);
+  const ang = opt.angle != null ? opt.angle : -0.3;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = b[0] + R() * b[2], y = b[1] + R() * b[3];
+    const len = 8 + R() * (opt.len || 26);
+    const a = ang + (R() - 0.5) * 0.6;
+    const f = (R() - 0.5) * (opt.var || 0.18);
+    ctx.strokeStyle = shade(base, f); ctx.globalAlpha = 0.25 + R() * 0.35;
+    ctx.lineWidth = 1.5 + R() * 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); ctx.stroke();
+  }
+  ctx.restore();
+}
+function rectPath(x, y, w, h) { return c => c.rect(x, y, w, h); }
+function polyPath(pts) { return c => { c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); }; }
+
+function arcade(ctx, R, x, y, w, h, n, wall, hole, opt) {
+  opt = opt || {};
+  paintShape(ctx, R, rectPath(x, y, w, h), wall, { bounds: [x, y, w, h], n: w * h / 500 });
+  const aw = w / n;
+  for (let i = 0; i < n; i++) {
+    const ax = x + i * aw + aw * 0.18, aww = aw * 0.64, top = y + (opt.archTop || h * 0.22), bot = y + h;
+    const r = aww / 2;
+    paintShape(ctx, R, c => { c.moveTo(ax, bot); c.lineTo(ax, top + r); c.arc(ax + r, top + r, r, Math.PI, 0); c.lineTo(ax + aww, bot); }, hole, { bounds: [ax, top, aww, bot - top], n: 60, var: 0.12 });
+    // lit inner edge
+    ctx.strokeStyle = rgba('#fff6c0', 0.35); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ax + aww, bot); ctx.lineTo(ax + aww, top + r); ctx.arc(ax + r, top + r, r, 0, -Math.PI / 2, true); ctx.stroke();
+  }
+}
+
+function sky(ctx, w, top, bot, horizon) {
+  const g = ctx.createLinearGradient(0, 0, 0, horizon);
+  g.addColorStop(0, top); g.addColorStop(1, bot);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon + 4);
+}
+
+function ground(ctx, R, w, horizon, col) {
+  paintShape(ctx, R, rectPath(0, horizon, w, VIEW_H - horizon), col, { bounds: [0, horizon, w, VIEW_H - horizon], angle: 0.05 });
+}
+function longShadow(ctx, pts, a) {
+  ctx.fillStyle = rgba('#2a1d1c', a || 0.55);
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.fill();
+}
+function ghostStair(ctx, x, y, len, ang, a, col, blur) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.globalAlpha = a;
+  if (blur) ctx.filter = 'blur(' + blur + 'px)';
+  ctx.fillStyle = col || '#3a2c2a';
+  stairPath(ctx, len, 10, 16); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- chapter scenes ----------
+// Original metaphysical-style piazzas. Inspired by the movement's language
+// (empty squares, arcades, long shadows, out-of-scale objects) but each scene is
+// built around the protagonist's own memories, not around any existing painting.
+function block(ctx, R, x, y, w, h, col, ang) { paintShape(ctx, R, rectPath(x, y, w, h), col, { bounds: [x, y, w, h], angle: ang == null ? 1.5 : ang, n: Math.max(30, w * h / 700) }); }
+function sideShade(ctx, x, y, w, h, a) { ctx.fillStyle = rgba('#2a1d1c', a || 0.28); ctx.fillRect(x, y, w, h); }
+function hills(ctx, R, w, H, col, amp) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, H);
+  for (let x = 0; x <= w; x += 40) ctx.lineTo(x, H - amp * (0.4 + 0.6 * Math.abs(Math.sin(x * 0.0021 + 1.3) * Math.sin(x * 0.0007))));
+  ctx.lineTo(w, H); ctx.closePath(); ctx.fill();
+}
+const SCENES = {
+  // Ch.1 Paintings: a giant easel holding an empty canvas, a long ochre arcade, a lone lamp post
+  PNT(back, mid, R, wb, wm) {
+    const H = 480;
+    sky(back, wb, '#2b5a46', '#dfe8b0', H);
+    // distant square tower (campanile), hazy with distance
+    const tw = wb * 0.88;
+    block(back, R, tw, H - 300, 64, 300, '#ddd0a8');
+    back.fillStyle = '#e2d3a6'; back.beginPath(); back.moveTo(tw - 6, H - 300); back.lineTo(tw + 32, H - 345); back.lineTo(tw + 70, H - 300); back.fill();
+    back.fillStyle = 'rgba(90,72,50,.45)';
+    for (const ox of [12, 38]) { back.beginPath(); back.moveTo(ox + tw, H - 250); back.lineTo(ox + tw, H - 272); back.arc(ox + tw + 7, H - 272, 7, Math.PI, 0); back.lineTo(ox + tw + 14, H - 250); back.fill(); }
+    back.fillRect(tw + 28, H - 180, 8, 16);
+    back.fillStyle = 'rgba(70,55,40,.16)'; back.fillRect(tw + 44, H - 300, 20, 300);
+    hills(back, R, wb, H, '#9fae7c', 50);
+    for (let i = 0; i < 5; i++) { const x = wb * (0.08 + i * 0.2) + R() * 60; block(back, R, x, H - 40, 90 + R() * 60, 40, '#cfc08a', 0); }
+    ghostStair(back, wb * 0.42, 95, 165, 0.5, 0.32, '#5f7f6a', 1.6); // a farther stair to nowhere, hazy like distant hills
+    ground(back, R, wb, H, '#e6cf55');
+    const m = mid;
+    // long low arcade on the left, seen frontally
+    arcade(m, R, 0, 300, wm * 0.42, 300, 6, '#c9a35a', '#3a2f2a', { archTop: 70 });
+    block(m, R, 0, 270, wm * 0.42, 34, '#b58f4c', 0);
+    longShadow(m, [0, 600, wm * 0.42, 600, wm * 0.62, 900, 0, 900], 0.42);
+    // lamp post
+    const lx = wm * 0.86;
+    m.fillStyle = '#2f2622'; m.fillRect(lx, 260, 10, 380); m.beginPath(); m.moveTo(lx - 22, 262); m.lineTo(lx + 32, 262); m.lineTo(lx + 18, 228); m.lineTo(lx - 8, 228); m.fill();
+    longShadow(m, [lx, 640, lx + 10, 640, lx + 300, 900, lx + 250, 900], 0.3);
+    ghostStair(m, wm * 0.3, 200, 300, -0.5, 0.12);
+  },
+  // Ch.2 The dance: a white stepped bell tower, a monumental gramophone, a pale colonnade
+  BAL(back, mid, R, wb, wm) {
+    const H = 450;
+    sky(back, wb, '#2f6a5a', '#c7e6b8', H);
+    for (let i = 0; i < 7; i++) { const x = R() * wb, w = 60 + R() * 140; block(back, R, x, H - 30 - R() * 26, w, 70, '#d7b98a', 0); }
+    ground(back, R, wb, H, '#eccf4f');
+    const m = mid;
+    // stepped white tower
+    const tx = wm * 0.16;
+    block(m, R, tx, 330, 200, 280, '#f1ead4');
+    block(m, R, tx + 30, 210, 140, 130, '#f1ead4');
+    block(m, R, tx + 55, 120, 90, 100, '#f1ead4');
+    m.fillStyle = '#3a2f2a'; m.beginPath(); m.moveTo(tx + 80, 200); m.lineTo(tx + 80, 160); m.arc(tx + 100, 160, 20, Math.PI, 0); m.lineTo(tx + 120, 200); m.fill();
+    sideShade(m, tx + 150, 330, 50, 280); sideShade(m, tx + 130, 210, 40, 130); sideShade(m, tx + 115, 120, 30, 100);
+    longShadow(m, [tx + 200, 610, tx, 610, tx + 380, 900, tx + 760, 900], 0.38);
+    // gramophone on a plinth
+    const gx = wm * 0.56;
+    block(m, R, gx - 90, 520, 180, 100, '#e9e2cc', 0);
+    m.fillStyle = '#5a3a26'; m.fillRect(gx - 60, 470, 120, 50);
+    m.strokeStyle = '#3a2a20'; m.lineWidth = 8; m.beginPath(); m.moveTo(gx + 20, 470); m.quadraticCurveTo(gx + 40, 380, gx + 90, 340); m.stroke();
+    m.fillStyle = '#c9a03a'; m.beginPath(); m.moveTo(gx + 80, 350); m.lineTo(gx + 230, 170); m.quadraticCurveTo(gx + 300, 260, gx + 260, 330); m.closePath(); m.fill();
+    m.fillStyle = rgba('#7a5a20', 0.4); m.beginPath(); m.moveTo(gx + 80, 350); m.lineTo(gx + 260, 330); m.quadraticCurveTo(gx + 300, 260, gx + 230, 170); m.closePath(); m.globalAlpha = 0.5; m.fill(); m.globalAlpha = 1;
+    longShadow(m, [gx - 90, 620, gx + 90, 620, gx + 360, 900, gx + 60, 900], 0.32);
+    // colonnade right
+    const cx = wm * 0.78;
+    block(m, R, cx, 250, wm * 0.22, 40, '#e6dcc2', 0);
+    for (let x = cx + 20; x < wm; x += 70) { block(m, R, x, 290, 26, 330, '#efe7d2'); sideShade(m, x + 18, 290, 8, 330, 0.25); }
+    longShadow(m, [cx, 620, wm, 620, wm, 900, cx + 200, 900], 0.35);
+    ghostStair(m, wm * 0.42, 260, 260, 0.6, 0.1);
+  },
+  // Ch.3 Toys: oversized wooden blocks and a spinning top, blue sky, side wings
+  JGT(back, mid, R, wb, wm) {
+    const H = 500;
+    sky(back, wb, '#3aa3cf', '#d8f1f2', H);
+    hills(back, R, wb, H, '#b6c9a6', 40);
+    for (let i = 0; i < 6; i++) { const x = R() * wb, w = 70 + R() * 120; block(back, R, x, H - 34, w, 40, '#f1e5cf', 0); back.fillStyle = '#8a9fb0'; back.fillRect(x, H - 38, w, 5); }
+    ground(back, R, wb, H, '#f0d070');
+    const m = mid;
+    // wings
+    paintShape(m, R, c => { c.moveTo(0, 0); c.lineTo(wm * 0.1, 80); c.lineTo(wm * 0.1, 640); c.lineTo(0, 900); }, '#d79a5a', { bounds: [0, 0, wm * 0.1, 900], angle: 1.5 });
+    paintShape(m, R, c => { c.moveTo(wm, 0); c.lineTo(wm * 0.9, 80); c.lineTo(wm * 0.9, 640); c.lineTo(wm, 900); }, '#d79a5a', { bounds: [wm * 0.9, 0, wm * 0.1, 900], angle: 1.5 });
+    // stacked toy blocks
+    const bx = wm * 0.26;
+    const cube = (x, y, s, col, letterCol) => { block(m, R, x, y, s, s, col, 0.3); m.strokeStyle = rgba('#3a2a20', 0.35); m.lineWidth = 3; m.strokeRect(x + 10, y + 10, s - 20, s - 20); m.fillStyle = letterCol; m.fillRect(x + s * 0.35, y + s * 0.3, s * 0.3, s * 0.4); sideShade(m, x + s * 0.75, y, s * 0.25, s, 0.2); };
+    cube(bx, 460, 160, '#e8d3a8', '#c8302a');
+    cube(bx + 170, 500, 120, '#9fc6d8', '#2b3c63');
+    cube(bx + 40, 300, 140, '#efc45a', '#2f6a5a');
+    longShadow(m, [bx, 620, bx + 290, 620, bx + 600, 900, bx + 120, 900], 0.34);
+    // spinning top
+    const sx = wm * 0.68;
+    m.fillStyle = '#c8302a'; m.beginPath(); m.moveTo(sx, 610); m.lineTo(sx - 120, 470); m.quadraticCurveTo(sx, 400, sx + 120, 470); m.closePath(); m.fill();
+    m.fillStyle = '#f2efe6'; m.fillRect(sx - 112, 462, 224, 16);
+    m.fillStyle = '#5a3a26'; m.fillRect(sx - 8, 380, 16, 60);
+    longShadow(m, [sx, 612, sx + 40, 612, sx + 300, 900, sx + 180, 900], 0.3);
+    ghostStair(m, wm * 0.48, 220, 240, -0.9, 0.1);
+  },
+  // Ch.4 The bottle: dusk, a bottle and a glass as monuments, an empty hall, a street lamp and neon
+  BTL(back, mid, R, wb, wm) {
+    const H = 510;
+    sky(back, wb, '#33585e', '#d6b98e', H);
+    for (let i = 0; i < 9; i++) { const x = R() * wb, w = 60 + R() * 140, h = 40 + R() * 70; block(back, R, x, H - h, w, h, '#a8804e', 0); back.fillStyle = '#f2d27a'; back.fillRect(x + w * 0.4, H - h + 14, 8, 10); }
+    ground(back, R, wb, H, '#c9a463');
+    const m = mid;
+    // bottle as a stylised monument: flat geometric volumes, like the towers of the piazza
+    const bx = wm * 0.24;
+    block(m, R, bx - 80, 580, 160, 40, '#e2dccb', 0);
+    paintShape(m, R, c => { c.moveTo(bx - 46, 580); c.lineTo(bx - 46, 330); c.lineTo(bx - 14, 280); c.lineTo(bx - 14, 180); c.lineTo(bx + 14, 180); c.lineTo(bx + 14, 280); c.lineTo(bx + 46, 330); c.lineTo(bx + 46, 580); }, '#5f7a5a', { bounds: [bx - 46, 180, 92, 400], angle: 1.5 });
+    sideShade(m, bx + 14, 330, 32, 250, 0.3); sideShade(m, bx + 4, 180, 10, 100, 0.3);
+    longShadow(m, [bx - 80, 620, bx + 80, 620, bx + 440, 900, bx + 120, 900], 0.4);
+    // empty hall with tall door
+    const fx = wm * 0.58;
+    block(m, R, fx, 280, 420, 340, '#eadfc4');
+    m.fillStyle = '#e1d4b4'; m.beginPath(); m.moveTo(fx - 20, 282); m.lineTo(fx + 210, 210); m.lineTo(fx + 440, 282); m.fill();
+    m.fillStyle = '#2b2626'; m.fillRect(fx + 170, 400, 80, 220);
+    for (const wx of [50, 330]) { m.fillStyle = '#3d4c55'; m.fillRect(fx + wx, 360, 40, 90); }
+    sideShade(m, fx + 340, 280, 80, 340);
+    longShadow(m, [fx, 620, fx + 420, 620, fx + 600, 900, fx - 200, 900], 0.38);
+    // street lamp
+    const lx = wm * 0.9;
+    m.fillStyle = '#2f2622'; m.fillRect(lx, 300, 10, 320); m.beginPath(); m.moveTo(lx - 22, 302); m.lineTo(lx + 32, 302); m.lineTo(lx + 18, 268); m.lineTo(lx - 8, 268); m.fill();
+    longShadow(m, [lx, 620, lx + 10, 620, lx + 300, 900, lx + 250, 900], 0.3);
+    ghostStair(m, wm * 0.46, 200, 280, 0.4, 0.1);
+  },
+  // Epilogue: dawn; the clock of the script sits on a slender square tower beside a long low wall
+  EPL(back, mid, R, wb, wm) {
+    const H = 520;
+    sky(back, wb, '#86b7c4', '#fbe8b8', H);
+    back.fillStyle = 'rgba(255,240,200,.7)'; back.beginPath(); back.arc(wb * 0.7, H - 10, 70, Math.PI, 0); back.fill();
+    hills(back, R, wb, H, '#c7bf96', 30);
+    ground(back, R, wb, H, '#ecd38a');
+    const m = mid;
+    // long low wall with windows
+    block(m, R, 0, 470, wm, 150, '#e3c47a', 0);
+    for (let x = 60; x < wm; x += 200) { m.fillStyle = '#6a5136'; m.fillRect(x, 510, 50, 70); }
+    longShadow(m, [0, 620, wm, 620, wm, 680, 0, 700], 0.3);
+    // clock tower
+    const tx = wm * 0.38;
+    block(m, R, tx, 110, 150, 510, '#f2e8cf');
+    sideShade(m, tx + 110, 110, 40, 510, 0.22);
+    m.fillStyle = '#e8dcbc'; m.beginPath(); m.moveTo(tx - 10, 112); m.lineTo(tx + 75, 50); m.lineTo(tx + 160, 112); m.fill();
+    const cx = tx + 75, cy = 200;
+    m.fillStyle = '#fbf7ea'; m.beginPath(); m.arc(cx, cy, 52, 0, 7); m.fill();
+    m.strokeStyle = '#5b4026'; m.lineWidth = 4; m.stroke();
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; m.beginPath(); m.moveTo(cx + Math.cos(a) * 40, cy + Math.sin(a) * 40); m.lineTo(cx + Math.cos(a) * 47, cy + Math.sin(a) * 47); m.stroke(); }
+    m.lineWidth = 4; m.beginPath(); m.moveTo(cx, cy); m.lineTo(cx + 18, cy - 24); m.moveTo(cx, cy); m.lineTo(cx - 8, cy + 34); m.stroke();
+    longShadow(m, [tx, 620, tx + 150, 620, tx + 800, 900, tx + 500, 900], 0.35);
+  },
+};
+
+function buildBackground(tag, roomW, seed) {
+  const wb = Math.ceil(VIEW_W + (roomW - VIEW_W) * 0.15) + 4;
+  const wm = Math.ceil(VIEW_W + (roomW - VIEW_W) * 0.45) + 4;
+  const mk = w => { const c = document.createElement('canvas'); c.width = w; c.height = VIEW_H; return c; };
+  const back = mk(wb), mid = mk(wm);
+  const R = rng(seed);
+  SCENES[tag](back.getContext('2d'), mid.getContext('2d'), R, wb, wm);
+  return { back, mid, wb, wm };
+}
+
+// ---------- foreground primitives ----------
+function stairPath(ctx, len, n, th) {
+  // local frame: x along the stair, teeth (steps) on the -y side, flat underside at +y
+  const sw = len / n, bot = th / 2 - 2, base = -2, tip = -th / 2 - 4;
+  ctx.beginPath();
+  ctx.moveTo(-len / 2, bot);
+  ctx.lineTo(len / 2, bot);
+  ctx.lineTo(len / 2, tip);
+  for (let i = n; i > 0; i--) {
+    const x1 = -len / 2 + i * sw;
+    ctx.lineTo(x1 - sw * 0.55, tip);          // tread
+    ctx.lineTo(x1 - sw * 0.55, base);         // riser down
+    ctx.lineTo(x1 - sw, base);                // gap
+    if (i > 1) ctx.lineTo(x1 - sw, tip);      // next riser up
+  }
+  ctx.lineTo(-len / 2, base);
+  ctx.closePath();
+}
+
+function drawStair(ctx, st, t) {
+  ctx.save();
+  ctx.translate(st.x, st.y);
+  if (st.kind === 'weight') {
+    ctx.fillStyle = COL.ink;
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-22, 46); ctx.lineTo(22, 46); ctx.closePath(); ctx.fill();
+  }
+  ctx.rotate(st.ang);
+  // soft shadow
+  ctx.save(); ctx.translate(10, 14); ctx.fillStyle = 'rgba(40,25,20,.18)'; stairPath(ctx, st.len, st.steps, 28); ctx.fill(); ctx.restore();
+  ctx.fillStyle = COL.ink;
+  stairPath(ctx, st.len, st.steps, 28); ctx.fill();
+  // pivot
+  if (st.link || st.gear) {           // geared pair: a cog at the pivot
+    ctx.fillStyle = COL.ink; ctx.beginPath();
+    for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10, r = i % 2 ? 13 : 17; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.stroke();
+    if (st.ride) { ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, 7); ctx.fill(); }
+  } else if (st.ride) {               // turns only with Hazop on it: a hollow pivot with a dot
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, 7); ctx.fill();
+  } else {
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// the chain that ties two geared stairs
+function drawGearLink(ctx, a, b) {
+  ctx.save(); ctx.strokeStyle = 'rgba(27,21,21,.35)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+}
+
+// a balance pair: both platforms hang from one chain running over two pulleys high above
+function drawBalance(ctx, a, b, travel) {
+  const top = Math.min(a.y0, b.y0) - travel - 150;
+  const ax = a.x + a.w / 2, bx = b.x + b.w / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(27,21,21,.55)'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(ax - a.w * 0.3, a.y); ctx.lineTo(ax, a.y - 46); ctx.lineTo(ax + a.w * 0.3, a.y);   // bridle
+  ctx.moveTo(bx - b.w * 0.3, b.y); ctx.lineTo(bx, b.y - 46); ctx.lineTo(bx + b.w * 0.3, b.y);
+  ctx.moveTo(ax, a.y - 46); ctx.lineTo(ax, top);
+  ctx.moveTo(bx, b.y - 46); ctx.lineTo(bx, top);
+  ctx.moveTo(ax, top - 16); ctx.lineTo(bx, top - 16);
+  ctx.stroke();
+  for (const x of [ax, bx]) {
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(x, top - 8, 15, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, top - 8, 9, 0, 7); ctx.stroke();
+    // spokes turn with the chain
+    const r = ((a.y - a.y0) / 15);
+    ctx.beginPath(); for (let k = 0; k < 3; k++) { const q = r + k * 2.094; ctx.moveTo(x, top - 8); ctx.lineTo(x + Math.cos(q) * 9, top - 8 + Math.sin(q) * 9); } ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPlatform(ctx, p, t) {
+  if (p.gone) return;
+  if (p.kind === 'crate') { drawCrate(ctx, p); return; }
+  if (p.crumble) { drawCrumbling(ctx, p, t || 0); return; }
+  ctx.fillStyle = 'rgba(40,25,20,.18)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, Math.min(p.h, 60));
+  ctx.fillStyle = COL.ink; ctx.fillRect(p.x, p.y, p.w, p.h);
+  ctx.fillStyle = COL.inkHi; ctx.fillRect(p.x, p.y, p.w, 3);
+  if (p.move) { // tiny rails hint for movers
+    ctx.fillStyle = 'rgba(240,235,210,.5)';
+    for (let i = 0; i < 3; i++) ctx.fillRect(p.x + p.w / 2 - 14 + i * 12, p.y + p.h / 2 - 2, 6, 4);
+  }
+}
+
+function drawCrumbling(ctx, p, t) {
+  const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : 0;
+  ctx.save(); ctx.translate(sh, p.shake > 0 ? p.shake * 6 : 0);
+  ctx.fillStyle = 'rgba(40,25,20,.15)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, p.h);
+  ctx.fillStyle = '#3a2f2b'; ctx.fillRect(p.x, p.y, p.w, p.h);
+  // separate stones with cracks
+  ctx.strokeStyle = '#a89c86'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let x = p.x + 28; x < p.x + p.w; x += 34) { ctx.moveTo(x, p.y); ctx.lineTo(x - 5, p.y + p.h * 0.55); ctx.lineTo(x + 3, p.y + p.h); }
+  ctx.moveTo(p.x + 6, p.y + p.h * 0.5); ctx.lineTo(p.x + 20, p.y + p.h * 0.45);
+  ctx.stroke();
+  ctx.fillStyle = '#5a4c44'; ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.restore();
+}
+
+function drawCrate(ctx, c) {
+  ctx.fillStyle = 'rgba(40,25,20,.18)'; ctx.fillRect(c.x + 8, c.y + 10, c.w, c.h);
+  ctx.fillStyle = COL.ink; ctx.fillRect(c.x, c.y, c.w, c.h);
+  ctx.strokeStyle = '#f4f0dc'; ctx.lineWidth = 2; ctx.strokeRect(c.x + 7, c.y + 7, c.w - 14, c.h - 14);
+  ctx.fillStyle = '#f4f0dc'; ctx.beginPath(); ctx.arc(c.x + c.w / 2, c.y + c.h / 2, 4, 0, 7); ctx.fill();
+}
+
+function drawPlate(ctx, x, y, w, anim) {
+  const h = 13 - anim * 8;
+  ctx.fillStyle = COL.ink; ctx.fillRect(x - w / 2 - 5, y - 4, w + 10, 4);
+  ctx.fillStyle = anim > 0.5 ? '#f3dc6e' : '#efe4c0'; ctx.fillRect(x - w / 2, y - h - 3, w, h);
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 2; ctx.strokeRect(x - w / 2, y - h - 2, w, h);
+}
+
+function drawLever(ctx, x, y, anim, L) {
+  L = L || {};
+  if (L.type === 'once') {           // rusty one-way hinge: red knob, padlock once used
+    ctx.save(); ctx.translate(x, y);
+    const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
+    ctx.fillStyle = '#8f2a1e'; ctx.beginPath(); ctx.arc(Math.cos(a) * 30, Math.sin(a) * 30, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = COL.ink; ctx.fillRect(-9, -5, 18, 5);
+    if (L.locked) { ctx.fillStyle = COL.ink; ctx.fillRect(14, -16, 14, 11); ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(21, -16, 5, Math.PI, 0); ctx.stroke(); }
+    ctx.restore(); return;
+  }
+  if (L.type === 'timer') {          // hourglass lever with a countdown ring
+    ctx.save(); ctx.translate(x, y);
+    const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
+    const kx = Math.cos(a) * 30, ky = Math.sin(a) * 30;
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.moveTo(kx - 7, ky - 9); ctx.lineTo(kx + 7, ky - 9); ctx.lineTo(kx - 7, ky + 9); ctx.lineTo(kx + 7, ky + 9); ctx.closePath(); ctx.fill();
+    if (L.timer > 0) { ctx.strokeStyle = 'rgba(255,248,210,.95)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(kx, ky, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (L.timer / L.time)); ctx.stroke(); }
+    ctx.beginPath(); ctx.fillStyle = COL.ink; ctx.arc(0, 0, 6, Math.PI, 0); ctx.fill();
+    ctx.restore(); return;
+  }
+  ctx.save(); ctx.translate(x, y);
+  const a = -Math.PI / 2 + (anim * 2 - 1) * 0.6;
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 30, Math.sin(a) * 30); ctx.stroke();
+  if (L.actions && L.actions.some(q => q.lock != null)) {   // padlock lever: the knob is a padlock, shut when on
+    ctx.translate(Math.cos(a) * 30, Math.sin(a) * 30);
+    drawPadlock(ctx, 0, 0, 1, anim > 0.5);
+  } else { ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(Math.cos(a) * 30, Math.sin(a) * 30, 7, 0, 7); ctx.fill(); }
+  ctx.restore();
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(0, 0, 6, Math.PI, 0); ctx.fill(); ctx.restore();
+}
+
+function drawPadlock(ctx, x, y, k, shut, col) {
+  col = col || COL.ink; const hole = col === COL.ink ? '#f4f0dc' : COL.ink;
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (shut) ctx.arc(0, -5, 6, Math.PI, 0); else { ctx.arc(0, -9, 6, Math.PI, 0.1); }
+  ctx.stroke();
+  ctx.fillStyle = col; ctx.fillRect(-9, -5, 18, 14);
+  ctx.fillStyle = hole; ctx.fillRect(-1.5, 0, 3, 5);
+  ctx.restore();
+}
+
+function drawExitArrow(ctx, ex, room, open, t) {
+  const left = ex.x < room.w / 2;
+  const cx = left ? 70 : room.w - 80, cy = ex.y + ex.h / 2;
+  ctx.save(); ctx.translate(cx, cy); if (left) ctx.scale(-1, 1);
+  ctx.globalAlpha = open ? 0.55 + Math.sin(t * 3) * 0.15 : 0.12;
+  if (open) ctx.translate(Math.sin(t * 3) * 6, 0);
+  ctx.fillStyle = '#5f5c58';
+  ctx.beginPath(); ctx.moveTo(-50, -16); ctx.lineTo(4, -16); ctx.lineTo(4, -42); ctx.lineTo(50, 0); ctx.lineTo(4, 42); ctx.lineTo(4, 16); ctx.lineTo(-50, 16); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- memory icons (unit ~ 48px, centred) ----------
+function ic(ctx, f) { ctx.save(); f(ctx); ctx.restore(); }
+const INK = '#2a1f1d', PAPER = '#f4efe0', RED = '#c8302a';
+function line(c, w, col) { c.lineWidth = w; c.strokeStyle = col || INK; c.lineCap = 'round'; c.lineJoin = 'round'; }
+const ICONS = {
+  pnt_painting(c) { line(c, 3); c.beginPath(); c.moveTo(-16, 26); c.lineTo(0, -26); c.lineTo(16, 26); c.moveTo(0, -26); c.lineTo(0, 26); c.stroke();
+    c.fillStyle = PAPER; c.fillRect(-20, -18, 40, 30); c.strokeRect(-20, -18, 40, 30);
+    c.fillStyle = '#76AE81'; c.beginPath(); c.moveTo(-18, 10); c.lineTo(-6, -4); c.lineTo(4, 6); c.lineTo(4, 10); c.fill(); c.fillStyle = '#e8c44a'; c.beginPath(); c.arc(-10, -9, 4, 0, 7); c.fill();
+    c.setLineDash([3, 3]); line(c, 1.5, '#8b7a6a'); c.beginPath(); c.moveTo(6, -12); c.lineTo(16, 8); c.stroke(); c.setLineDash([]); },
+  pnt_brush(c) { c.rotate(-0.6); c.fillStyle = '#8b5a2b'; c.fillRect(-26, -3, 22, 6); c.fillRect(2, -3, 10, 6); c.fillStyle = '#c9c4b6'; c.fillRect(12, -4, 6, 8); c.fillStyle = RED; c.beginPath(); c.moveTo(18, -4); c.quadraticCurveTo(30, 0, 18, 4); c.fill();
+    line(c, 2); c.beginPath(); c.moveTo(-4, -5); c.lineTo(-1, 0); c.lineTo(-4, 5); c.moveTo(2, -5); c.lineTo(-1, 0); c.lineTo(2, 5); c.stroke(); },
+  pnt_book(c) { c.fillStyle = '#7a3b2a'; c.fillRect(-20, -24, 40, 48); c.fillStyle = PAPER; c.fillRect(-16, -20, 32, 40); line(c, 2, '#2a1f1d');
+    c.beginPath(); for (let i = 0; i < 6; i++) { c.moveTo(-12 + ((i * 7) % 4), -14 + i * 6); c.lineTo(12 - ((i * 5) % 4), -12 + i * 6 + (i % 2 ? 4 : -3)); } c.stroke();
+    line(c, 2.5, RED); c.beginPath(); c.moveTo(-12, 10); c.bezierCurveTo(0, -20, 6, 30, 12, -6); c.stroke(); },
+  pnt_register(c) { c.fillStyle = '#3c5a73'; c.fillRect(-20, -24, 40, 48); c.fillStyle = PAPER; c.fillRect(-15, -19, 30, 38); line(c, 1.2, '#7a8a96');
+    c.beginPath(); for (let i = 0; i < 6; i++) { c.moveTo(-15, -13 + i * 6); c.lineTo(15, -13 + i * 6); } c.moveTo(6, -19); c.lineTo(6, 19); c.stroke();
+    c.fillStyle = RED; c.font = 'bold 7px serif'; for (let i = 0; i < 5; i++) c.fillText(['3', '2', '4', '1', '3'][i], 8, -9 + i * 6); },
+  pnt_diary(c) { c.fillStyle = RED; c.beginPath(); c.roundRect(-18, -24, 36, 48, 4); c.fill(); c.fillStyle = '#8f1f1a'; c.fillRect(14, -6, 8, 12);
+    c.fillStyle = PAPER; c.fillRect(-12, -16, 18, 6); line(c, 2.5, PAPER); c.beginPath(); c.moveTo(-8, 12); c.lineTo(6, -2); c.stroke(); },
+  bal_dress(c) { c.fillStyle = '#c62a2a'; c.beginPath(); c.moveTo(-6, -26); c.lineTo(6, -26); c.lineTo(9, -10); c.lineTo(24, 26); c.lineTo(-24, 26); c.lineTo(-9, -10); c.closePath(); c.fill();
+    line(c, 2, '#8a1717'); c.beginPath(); c.moveTo(-9, -10); c.lineTo(9, -10); c.moveTo(-4, -26); c.lineTo(-8, -32); c.moveTo(4, -26); c.lineTo(8, -32); c.stroke(); },
+  bal_ticket(c) { c.rotate(-0.15); c.fillStyle = '#e9d9a6'; c.beginPath(); c.moveTo(-26, -14); c.lineTo(26, -14); c.lineTo(26, -4); c.arc(26, 0, 4, -Math.PI / 2, Math.PI / 2, true); c.lineTo(26, 14); c.lineTo(-26, 14); c.lineTo(-26, 4); c.arc(-26, 0, 4, Math.PI / 2, -Math.PI / 2, true); c.closePath(); c.fill();
+    line(c, 1.5, '#8b6a3a'); c.setLineDash([2, 3]); c.beginPath(); c.moveTo(12, -14); c.lineTo(12, 14); c.stroke(); c.setLineDash([]);
+    c.fillStyle = RED; c.font = 'bold 9px serif'; c.fillText('CINE', -20, 4); },
+  bal_tea(c) { c.fillStyle = '#e9e4d6'; c.beginPath(); c.ellipse(0, 18, 26, 6, 0, 0, 7); c.fill(); c.fillStyle = PAPER; c.beginPath(); c.moveTo(-16, -6); c.lineTo(16, -6); c.quadraticCurveTo(14, 16, 0, 16); c.quadraticCurveTo(-14, 16, -16, -6); c.fill();
+    line(c, 3, '#d9d2c0'); c.beginPath(); c.arc(19, 2, 6, -1.2, 1.4); c.stroke(); c.fillStyle = '#9a5a2a'; c.beginPath(); c.ellipse(0, -6, 15, 3, 0, 0, 7); c.fill();
+    line(c, 1.5, 'rgba(120,110,100,.6)'); c.beginPath(); c.moveTo(-4, -12); c.quadraticCurveTo(-8, -20, -3, -28); c.moveTo(5, -12); c.quadraticCurveTo(1, -20, 6, -28); c.stroke(); },
+  bal_tie(c) { c.fillStyle = '#2b3c63'; c.beginPath(); c.moveTo(-6, -26); c.lineTo(6, -26); c.lineTo(4, -18); c.lineTo(-4, -18); c.fill(); c.beginPath(); c.moveTo(-4, -18); c.lineTo(4, -18); c.lineTo(10, 18); c.lineTo(0, 28); c.lineTo(-10, 18); c.closePath(); c.fill();
+    line(c, 2, '#c8302a'); c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(-7, -8 + i * 8); c.lineTo(7, -14 + i * 8); } c.stroke(); },
+  bal_photo(c) { c.rotate(0.12); c.fillStyle = PAPER; c.fillRect(-22, -26, 44, 52); c.fillStyle = '#7d7366'; c.fillRect(-17, -21, 34, 34);
+    c.fillStyle = '#3a332c'; c.beginPath(); c.arc(-6, -8, 4, 0, 7); c.arc(6, -9, 4, 0, 7); c.fill(); c.fillRect(-10, -4, 8, 14); c.fillRect(2, -5, 8, 15);
+    c.fillStyle = '#1b1210'; c.beginPath(); c.moveTo(4, -26); c.quadraticCurveTo(8, -6, 22, -4); c.lineTo(22, -26); c.fill(); c.beginPath(); c.moveTo(22, 4); c.quadraticCurveTo(4, 8, -2, 26); c.lineTo(22, 26); c.fill();
+    c.fillStyle = 'rgba(230,120,40,.7)'; c.beginPath(); c.moveTo(4, -26); c.quadraticCurveTo(8, -6, 22, -4); c.lineTo(22, -2); c.quadraticCurveTo(6, -4, 2, -26); c.fill(); },
+  jgt_note(c) { c.rotate(-0.1); c.fillStyle = PAPER; c.beginPath(); c.moveTo(-20, -24); c.lineTo(14, -24); c.lineTo(20, -18); c.lineTo(20, 24); c.lineTo(-20, 24); c.fill(); line(c, 1.5, '#4a4a7a');
+    c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(-14, -12 + i * 9); for (let x = -14; x < 12; x += 4) c.lineTo(x + 2, -12 + i * 9 + (x % 8 ? -2 : 1)); } c.stroke(); c.fillStyle = RED; c.beginPath(); c.arc(10, 16, 3, 0, 7); c.fill(); },
+  jgt_cross(c) { c.fillStyle = PAPER; c.beginPath(); c.arc(0, 0, 26, 0, 7); c.fill(); c.fillStyle = RED; c.fillRect(-6, -18, 12, 36); c.fillRect(-18, -6, 36, 12); },
+  jgt_toy(c) { c.fillStyle = '#d0402e'; c.fillRect(-20, -6, 30, 16); c.fillStyle = '#e8c44a'; c.fillRect(-12, -18, 16, 12); c.fillStyle = INK; c.beginPath(); c.arc(-12, 14, 6, 0, 7); c.arc(4, 14, 6, 0, 7); c.fill();
+    c.save(); c.translate(18, 8); c.rotate(0.9); c.fillStyle = INK; c.beginPath(); c.arc(0, 0, 6, 0, 7); c.fill(); c.restore(); line(c, 2, INK); c.beginPath(); c.moveTo(10, -6); c.lineTo(14, 2); c.lineTo(10, 10); c.stroke(); },
+  jgt_guitar(c) { c.rotate(-0.5); c.fillStyle = '#c47a3a'; c.beginPath(); c.ellipse(0, 12, 14, 12, 0, 0, 7); c.ellipse(0, -4, 10, 9, 0, 0, 7); c.fill(); c.fillStyle = INK; c.beginPath(); c.arc(0, 6, 4, 0, 7); c.fill();
+    c.fillStyle = '#5a3a1a'; c.fillRect(-2.5, -34, 5, 30); c.fillRect(-4, -38, 8, 6); line(c, 0.8, '#eee'); c.beginPath(); c.moveTo(-1, -34); c.lineTo(-1, 18); c.moveTo(1, -34); c.lineTo(1, 18); c.stroke(); },
+  jgt_plate(c) { c.fillStyle = '#f2efe6'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 24, 0.3, 3.6); c.closePath(); c.fill(); c.fillStyle = '#e4dfd2'; c.beginPath(); c.arc(-2, 2, 14, 0.3, 3.6); c.lineTo(-2, 2); c.fill();
+    c.save(); c.translate(8, -6); c.fillStyle = '#f2efe6'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 24, 3.75, 6.1); c.closePath(); c.fill(); c.restore(); line(c, 1.5, '#5a6f9a'); c.beginPath(); c.arc(0, 0, 20, 0.4, 3.5); c.stroke(); },
+  btl_bell(c) { c.fillStyle = '#4a3a2a'; c.fillRect(-24, 14, 48, 8); c.fillStyle = '#d9b44a'; c.beginPath(); c.moveTo(-20, 14); c.quadraticCurveTo(-20, -14, 0, -14); c.quadraticCurveTo(20, -14, 20, 14); c.fill(); c.fillStyle = '#f0d77a'; c.beginPath(); c.ellipse(-6, -2, 4, 8, 0.4, 0, 7); c.fill();
+    c.fillStyle = '#8a7a5a'; c.fillRect(-2, -22, 4, 8); c.beginPath(); c.arc(0, -22, 4, 0, 7); c.fill(); },
+  btl_corks(c) { for (const [x, y, r] of [[-12, 6, 0.3], [8, 10, -0.4], [0, -10, 1.2]]) { c.save(); c.translate(x, y); c.rotate(r); c.fillStyle = '#b98a52'; c.fillRect(-7, -10, 14, 20); c.fillStyle = '#d4a86a'; c.beginPath(); c.ellipse(0, -10, 7, 3, 0, 0, 7); c.fill(); c.fillStyle = '#8a1f2a'; c.beginPath(); c.ellipse(0, 10, 7, 3, 0, 0, 7); c.fill(); c.restore(); } },
+  btl_neon(c) {   // a small neon sign: a glass drawn in one tube, centred in its frame (no lettering)
+    c.fillStyle = '#211a24'; c.fillRect(-26, -18, 52, 36);
+    line(c, 1.5, 'rgba(122,224,255,.85)'); c.strokeRect(-22, -14, 44, 28);
+    c.save(); c.shadowColor = '#ff3d7f'; c.shadowBlur = 8; line(c, 2.2, '#ff7aa3'); c.lineJoin = 'round'; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-9, -9); c.lineTo(9, -9); c.lineTo(0, 1); c.closePath(); c.moveTo(0, 1); c.lineTo(0, 8); c.moveTo(-5, 9); c.lineTo(5, 9); c.stroke();
+    c.restore();
+  },
+  btl_coins(c) { for (const [x, y] of [[-10, 8], [8, 10], [0, -4], [-4, 18]]) { c.fillStyle = '#c9a03a'; c.beginPath(); c.ellipse(x, y, 11, 6, 0, 0, 7); c.fill(); c.fillStyle = '#e9c45a'; c.beginPath(); c.ellipse(x, y - 2, 11, 6, 0, 0, 7); c.fill(); line(c, 1, '#9a7a2a'); c.beginPath(); c.ellipse(x, y - 2, 7, 3.5, 0, 0, 7); c.stroke(); } },
+  btl_bottle(c) { c.fillStyle = '#3e6a3a'; c.beginPath(); c.moveTo(-10, 26); c.lineTo(-10, -2); c.lineTo(-5, -10); c.lineTo(-2, -14); c.lineTo(3, -8); c.lineTo(6, -12); c.lineTo(10, -4); c.lineTo(10, 26); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-7, 0, 3, 20); c.fillStyle = '#3e6a3a'; c.beginPath(); c.moveTo(16, 18); c.lineTo(24, 12); c.lineTo(22, 22); c.fill(); c.beginPath(); c.moveTo(-18, 22); c.lineTo(-14, 14); c.lineTo(-22, 16); c.fill(); },
+  epl_clock(c) { c.fillStyle = '#5b4026'; c.beginPath(); c.arc(0, 0, 28, 0, 7); c.fill(); c.fillStyle = '#f5f1e2'; c.beginPath(); c.arc(0, 0, 23, 0, 7); c.fill(); line(c, 2, '#5b4026');
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; c.beginPath(); c.moveTo(Math.cos(a) * 18, Math.sin(a) * 18); c.lineTo(Math.cos(a) * 21, Math.sin(a) * 21); c.stroke(); }
+    const t = performance.now() / 1000; line(c, 2.5, '#2a1f1d'); c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(-t * 0.8) * 15, Math.sin(-t * 0.8) * 15); c.moveTo(0, 0); c.lineTo(Math.cos(-t * 0.1 - 1) * 10, Math.sin(-t * 0.1 - 1) * 10); c.stroke(); },
+};
+
+function drawMemory(ctx, x, y, id, t) {
+  // light cone from above + glow
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createLinearGradient(x, y - 420, x, y + 40);
+  g.addColorStop(0, 'rgba(255,250,210,0)'); g.addColorStop(1, 'rgba(255,248,200,.30)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 20, y - 420); ctx.lineTo(x + 20, y - 420); ctx.lineTo(x + 70, y + 36); ctx.lineTo(x - 70, y + 36); ctx.fill();
+  const r = 80 + Math.sin(t * 2.2) * 8;
+  const rg = ctx.createRadialGradient(x, y, 4, x, y, r);
+  rg.addColorStop(0, 'rgba(255,250,220,.75)'); rg.addColorStop(0.4, 'rgba(255,235,160,.30)'); rg.addColorStop(1, 'rgba(255,230,150,0)');
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.save(); ctx.translate(x, y + Math.sin(t * 2) * 4); ic(ctx, ICONS[id] || ICONS.pnt_painting); ctx.restore();
+}
+
+// ---------- Hazop as a real man (from the 16th memory on) ----------
+// Realistic proportions: height 72 px, head ~1/7.5 of the body. Colours go
+// from washed-out grey to full life as the last memories come back (k: 0..1).
+function mixCol(a, b, t) { const A = hexToRgb(a), B = hexToRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; }
+function drawHuman(ctx, P, n, opt) {
+  const k = Math.max(0, Math.min(1, (n - 15) / 6));
+  const G = '#9b978f';
+  const C = {
+    skin: mixCol(G, '#e2b48c', k), skinSh: mixCol('#7c7870', '#c49170', k),
+    hair: mixCol('#6a6660', '#3a2a20', k), suit: mixCol(G, '#4f4034', k), suitSh: mixCol('#7c7870', '#3d3128', k),
+    pants: mixCol(G, '#3a4456', k), pantsSh: mixCol('#7c7870', '#2c3444', k),
+    shirt: '#f2efe6', tie: mixCol('#8a8680', '#a82228', k), shoe: '#2b1f19', line: '#2a2120',
+  };
+  const ang = opt.angle || 0, face = P.facing || 1, moving = opt.moving, air = opt.air;
+  const ph = P.walkPhase || 0, sw = moving ? Math.sin(ph) : 0;
+  ctx.save();
+  ctx.translate(P.x, P.y); ctx.rotate(ang); ctx.scale(face * (opt.scale || 1), opt.scale || 1);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const seg = (pts, w, col) => { // outlined limb through points
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.strokeStyle = C.line; ctx.lineWidth = w + 1.6; ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+  };
+  const leg = (a, knee, col) => {
+    const hip = [0, -36];
+    const kn = [hip[0] + Math.sin(a) * 17, hip[1] + Math.cos(a) * 17];
+    const b = a - knee;
+    const an = [kn[0] + Math.sin(b) * 16, kn[1] + Math.cos(b) * 16];
+    seg([hip, kn, an], 5.2, col);
+    // shoe
+    ctx.save(); ctx.translate(an[0], an[1]); ctx.rotate(-b * 0.5);
+    ctx.fillStyle = C.shoe; ctx.beginPath(); ctx.moveTo(-2.4, -1.6); ctx.lineTo(5.6, -1.2); ctx.quadraticCurveTo(7.4, 0.6, 5.4, 1.6); ctx.lineTo(-2.6, 1.6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  };
+  const arm = (a, col, front) => {
+    const sh = [0.5, -55.5];
+    const el = [sh[0] + Math.sin(a) * 12.5, sh[1] + Math.cos(a) * 12.5];
+    const b = a + (air ? 0.15 : front ? 0.35 : 0.25);
+    const wr = [el[0] + Math.sin(b) * 11, el[1] + Math.cos(b) * 11];
+    seg([sh, el, wr], 3.8, col);
+    ctx.fillStyle = C.skin; ctx.strokeStyle = C.line; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.ellipse(wr[0] + Math.sin(b) * 1.8, wr[1] + Math.cos(b) * 1.8, 1.8, 2.4, -b, 0, 7); ctx.fill(); ctx.stroke();
+  };
+  let aL = moving ? sw * 0.42 : 0.05, aR = moving ? -sw * 0.42 : -0.05;
+  let kL = moving ? Math.max(0, -sw) * 0.55 : 0, kR = moving ? Math.max(0, sw) * 0.55 : 0;
+  let arF = moving ? -sw * 0.62 : 0.06, arB = moving ? sw * 0.62 : -0.04;
+  if (air) { aL = 0.55; kL = 0.9; aR = -0.2; kR = 0.3; arF = 2.75; arB = 2.95; }
+  // back limbs
+  arm(arB, C.suitSh, false);
+  leg(aR, kR, C.pantsSh);
+  // torso: jacket over shirt
+  ctx.beginPath();
+  ctx.moveTo(-4.6, -57.5); ctx.quadraticCurveTo(0, -59.5, 4.4, -57.6);
+  ctx.lineTo(4.6, -50); ctx.quadraticCurveTo(4.2, -42, 4.6, -34);
+  ctx.lineTo(-4.4, -34); ctx.quadraticCurveTo(-5.4, -44, -5.4, -50); ctx.closePath();
+  ctx.fillStyle = C.suit; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 0.9; ctx.stroke();
+  // shirt opening + tie (profile, chest side)
+  ctx.fillStyle = C.shirt; ctx.beginPath(); ctx.moveTo(1.4, -58); ctx.lineTo(4.4, -57.6); ctx.lineTo(4.1, -49); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.tie; ctx.beginPath(); ctx.moveTo(3.2, -57.6); ctx.lineTo(4.3, -57.4); ctx.lineTo(4.6, -47); ctx.lineTo(3.6, -45.6); ctx.lineTo(3, -47.2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = C.suitSh; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(1.2, -57.8); ctx.lineTo(3.6, -46); ctx.stroke();
+  // front leg (drawn after torso hem so the jacket overlaps the hip only slightly)
+  leg(aL, kL, C.pants);
+  ctx.fillStyle = C.suit; ctx.fillRect(-4.4, -38, 9, 4); // jacket hem over hips
+  // neck
+  ctx.fillStyle = C.skinSh; ctx.fillRect(-1.3, -60.2, 3.4, 3.0);
+  // head in profile
+  ctx.save(); ctx.translate(0.6, -64.9);
+  ctx.beginPath();
+  ctx.moveTo(-3.6, 3.4);                         // nape
+  ctx.quadraticCurveTo(-5.2, -1, -3.4, -4.6);    // back of skull
+  ctx.quadraticCurveTo(0, -6.8, 3.4, -4.6);      // crown
+  ctx.quadraticCurveTo(4.6, -3, 4.4, -1.2);      // forehead
+  ctx.lineTo(5.6, 0.9);                          // nose bridge -> tip
+  ctx.lineTo(4.5, 1.5);                          // under nose
+  ctx.quadraticCurveTo(4.8, 2.6, 4.2, 3.1);      // lips
+  ctx.quadraticCurveTo(4.3, 4.8, 2.8, 5.1);      // chin
+  ctx.quadraticCurveTo(0.4, 5, -0.6, 3.6);       // jaw
+  ctx.lineTo(-3.6, 3.4);
+  ctx.closePath();
+  ctx.fillStyle = C.skin; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 0.8; ctx.stroke();
+  // hair
+  ctx.fillStyle = C.hair; ctx.beginPath();
+  ctx.moveTo(-3.8, 1.2); ctx.quadraticCurveTo(-5.6, -2, -3.4, -4.9); ctx.quadraticCurveTo(0, -7.2, 3.6, -4.7); ctx.quadraticCurveTo(2, -4.2, 0.6, -3.3); ctx.quadraticCurveTo(-1.6, -2.4, -1.8, 0.4); ctx.closePath(); ctx.fill();
+  // ear, eye, brow, mouth
+  ctx.fillStyle = C.skinSh; ctx.beginPath(); ctx.ellipse(-1, 0.4, 1, 1.5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#1e1614'; ctx.beginPath(); ctx.arc(2.9, -1, 0.55, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.hair; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(2, -2.3); ctx.lineTo(4, -2.2); ctx.stroke();
+  ctx.strokeStyle = '#7a4a40'; ctx.lineWidth = 0.6; ctx.beginPath();
+  if (n >= 21) { ctx.moveTo(3.3, 3); ctx.quadraticCurveTo(4, 3.5, 4.4, 2.7); } else { ctx.moveTo(3.4, 3); ctx.lineTo(4.4, 3); }
+  ctx.stroke();
+  ctx.restore();
+  // front arm
+  arm(arF, C.suit, true);
+  ctx.restore();
+}
+
+// ---------- the mannequin (Hazop) ----------
+// n = number of memories recovered (0..21). The figure becomes more defined.
+function drawHazop(ctx, P, n, t, opt) {
+  opt = opt || {};
+  if (n >= 16) return drawHuman(ctx, P, n, opt);
+  const ang = opt.angle || 0, face = P.facing || 1;
+  const moving = opt.moving, air = opt.air;
+  const ph = P.walkPhase || 0;
+  ctx.save();
+  ctx.translate(P.x, P.y); ctx.rotate(ang); ctx.scale(face * (opt.scale || 1), opt.scale || 1);
+  const sw = moving ? Math.sin(ph) : 0;
+  const base = '#9b978f';
+  const outline = n >= 1 ? '#2a2120' : null;
+  const skin = '#e0b48e';
+  const legCol = n >= 19 ? '#3c4658' : n >= 3 ? '#b8322a' : base;
+  const torsoCol = n >= 20 ? '#5b4636' : base;
+  const armCol = n >= 20 ? '#5b4636' : n >= 7 ? '#d9822b' : base;
+  const headCol = n >= 18 ? skin : n >= 1 ? '#c9c4b6' : base;
+  const lw = 1.6;
+  const stroke = () => { if (outline) { ctx.strokeStyle = outline; ctx.lineWidth = lw; ctx.stroke(); } };
+
+  // limb helper: from (x0,y0) with angle a, length l, thickness w0->w1
+  function limb(x0, y0, a, l, w0, w1, col) {
+    const x1 = x0 + Math.sin(a) * l, y1 = y0 + Math.cos(a) * l;
+    const nx = Math.cos(a), ny = -Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(x0 + nx * w0, y0 + ny * w0); ctx.lineTo(x1 + nx * w1, y1 + ny * w1);
+    ctx.arc(x1, y1, w1, Math.atan2(ny, nx), Math.atan2(ny, nx) + Math.PI);
+    ctx.lineTo(x0 - nx * w0, y0 - ny * w0); ctx.arc(x0, y0, w0, Math.atan2(-ny, -nx), Math.atan2(-ny, -nx) + Math.PI);
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill(); stroke();
+    return [x1, y1];
+  }
+  const hipY = -34;
+  let aL = moving ? sw * 0.45 : 0.07, aR = moving ? -sw * 0.45 : -0.07, kL = Math.max(0, -sw) * 0.5, kR = Math.max(0, sw) * 0.5;
+  if (air) { aL = 0.6; aR = -0.25; kL = 0.9; kR = 0.35; }
+  // back leg
+  let [kx, ky] = limb(-2, hipY, aR, 17, 5, 4, shade(legCol, -0.15));
+  let [fx, fy] = limb(kx, ky, aR - kR, 17, 4, 3.3, shade(legCol, -0.15));
+  if (n >= 6) { ctx.fillStyle = '#3a2a22'; ctx.beginPath(); ctx.ellipse(fx + 3, fy, 6, 3, 0, 0, 7); ctx.fill(); }
+  // back arm
+  const shY = -58;
+  let arm1 = sw * -0.65, arm2 = sw * 0.65;
+  if (air) { arm1 = 2.75; arm2 = 2.95; }
+  const elb = air ? 0.15 : 0.45;
+  let [ex, ey] = limb(-1, shY, arm2, 13, 3.6, 3, shade(armCol, -0.15));
+  let [hx, hy] = limb(ex, ey, arm2 + elb, 12, 3, 2.6, shade(armCol, -0.15));
+  if (n >= 15) { ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hy, 3.2, 0, 7); ctx.fill(); }
+  // torso
+  ctx.beginPath(); ctx.moveTo(-8, hipY + 2); ctx.lineTo(-11, shY - 2); ctx.quadraticCurveTo(0, shY - 7, 11, shY - 2); ctx.lineTo(8, hipY + 2); ctx.quadraticCurveTo(0, hipY + 6, -8, hipY + 2); ctx.closePath();
+  ctx.fillStyle = torsoCol; ctx.fill();
+  ctx.save(); ctx.clip();
+  if (n >= 4 && n < 20) { ctx.fillStyle = '#76AE81'; ctx.beginPath(); ctx.moveTo(-12, shY); ctx.lineTo(4, shY); ctx.lineTo(-2, -44); ctx.lineTo(-12, -40); ctx.fill(); }
+  if (n >= 5 && n < 20) { ctx.fillStyle = '#e8c44a'; ctx.beginPath(); ctx.moveTo(2, -50); ctx.lineTo(12, -54); ctx.lineTo(10, -36); ctx.lineTo(-2, -36); ctx.fill(); }
+  if (n >= 10) { ctx.fillStyle = '#f2efe6'; ctx.beginPath(); ctx.moveTo(-5, shY - 4); ctx.lineTo(0, shY + 6); ctx.lineTo(5, shY - 4); ctx.fill(); }
+  if (n >= 20) { ctx.fillStyle = '#f2efe6'; ctx.fillRect(-3, shY - 4, 6, 26); }
+  if (n >= 9) { ctx.fillStyle = '#b8222a'; ctx.beginPath(); ctx.moveTo(-1.5, shY - 2); ctx.lineTo(1.5, shY - 2); ctx.lineTo(3, -42); ctx.lineTo(0, -38); ctx.lineTo(-3, -42); ctx.closePath(); ctx.fill(); }
+  if (n >= 2) { ctx.strokeStyle = 'rgba(40,30,28,.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9, -46); ctx.quadraticCurveTo(0, -42, 9, -47); ctx.stroke(); }
+  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(-8, hipY + 2); ctx.lineTo(-11, shY - 2); ctx.quadraticCurveTo(0, shY - 7, 11, shY - 2); ctx.lineTo(8, hipY + 2); ctx.quadraticCurveTo(0, hipY + 6, -8, hipY + 2); ctx.closePath(); stroke();
+  // front leg
+  [kx, ky] = limb(2, hipY, aL, 17, 5, 4, legCol);
+  [fx, fy] = limb(kx, ky, aL - kL, 17, 4, 3.3, legCol);
+  if (n >= 6) { ctx.fillStyle = '#2b1f19'; ctx.beginPath(); ctx.ellipse(fx + 3, fy, 6, 3, 0, 0, 7); ctx.fill(); }
+  // neck + head
+  ctx.fillStyle = n >= 8 ? skin : headCol; ctx.fillRect(-2.5, shY - 9, 5, 6);
+  ctx.save(); ctx.translate(1, shY - 17); ctx.rotate(0.12);
+  ctx.beginPath(); ctx.ellipse(0, 0, 7.5, 10, 0, 0, 7); ctx.fillStyle = headCol; ctx.fill(); stroke();
+  if (n >= 2 && n < 18) { ctx.strokeStyle = 'rgba(40,30,28,.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-7, -2); ctx.quadraticCurveTo(0, 3, 7, -3); ctx.moveTo(1, -10); ctx.quadraticCurveTo(-3, 0, 2, 10); ctx.stroke(); }
+  if (n >= 11) { ctx.fillStyle = '#3a2a20'; ctx.beginPath(); ctx.ellipse(-1, -6, 8, 5, -0.2, Math.PI, 0); ctx.fill(); ctx.fillRect(-8.5, -6, 4, 6); }
+  if (n >= 12) { ctx.fillStyle = shade(headCol, -0.12); ctx.beginPath(); ctx.ellipse(-3, 1, 2, 3, 0, 0, 7); ctx.fill(); }
+  if (n >= 13) { ctx.fillStyle = '#1e1614'; ctx.beginPath(); ctx.arc(4, -1, 1.2, 0, 7); ctx.fill(); }
+  if (n >= 14) { ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(2, -4); ctx.lineTo(6, -4.5); ctx.stroke(); }
+  if (n >= 16) { ctx.strokeStyle = shade(headCol, -0.3); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(6.2, -1); ctx.lineTo(7.4, 2.4); ctx.lineTo(5.8, 2.9); ctx.stroke(); }
+  if (n >= 17) { ctx.strokeStyle = '#7a3a30'; ctx.lineWidth = 1.2; ctx.beginPath(); if (n >= 21) ctx.arc(4.5, 4.5, 2.4, 0.2, Math.PI - 0.6); else { ctx.moveTo(3, 6); ctx.lineTo(6.5, 5.8); } ctx.stroke(); }
+  ctx.restore();
+  // front arm
+  [ex, ey] = limb(1, shY, arm1, 13, 3.6, 3, armCol);
+  [hx, hy] = limb(ex, ey, arm1 + elb, 12, 3, 2.6, armCol);
+  if (n >= 15) { ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hy, 3.2, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+
+
+// ---- grind.js ----
+// ============================================================
+// STAIRWAYS — metal grinding scrape & clatter, synthesised sample by sample.
+// Model: a heavy metal edge dragged over stone/metal. Stick-slip produces a dense,
+// irregular stream of micro-impacts (grains); each one excites the inharmonic modes
+// of the metal part. Under it a gritty hiss and a low body rumble. Sometimes it ends
+// with a clatter: one harder knock that leaves the part ringing.
+// Pure function (no WebAudio) so it can be rendered offline for checking.
+// ============================================================
+
+function synthGrind(sr, opt) {
+  opt = opt || {};
+  let seed = (opt.seed || 1) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pitch = opt.pitch || 1;
+  const dur = opt.dur || (0.75 + rnd() * 0.45);
+  const clatter = opt.clatter != null ? opt.clatter : rnd() < 0.55;
+  const tail = clatter ? 0.55 : 0.12;
+  const n = Math.floor((dur + tail) * sr);
+  const out = new Float32Array(n);
+
+  // metal modes (inharmonic), decay in seconds
+  const base = opt.dark ? [150, 260, 410, 620, 880] : [540, 1130, 1720, 2480, 3610, 5200, 8800, 10300];
+  const modes = base.map((f, i) => {
+    const fr = f * pitch * (0.94 + rnd() * 0.12);
+    const decay = (i < 2 ? 0.05 : 0.025) + rnd() * 0.03;
+    const r = Math.exp(-1 / (decay * sr));
+    const w = 2 * Math.PI * fr / sr;
+    return { a1: 2 * r * Math.cos(w), a2: -r * r, y1: 0, y2: 0, g: (opt.dark ? [1, .9, .6, .3, .15] : [1, 1, .85, .5, .3, .16, .07, .05])[i] * (1 - r) * 3,
+      ringR: Math.exp(-1 / ((0.35 + rnd() * 0.35) * sr)), w };
+  });
+
+  // envelope: quick drag-in, wobbly body, dies off at the end of the drag
+  const ph = rnd() * 2;
+  const env = t => {
+    if (t > dur) return 0;
+    const a = Math.min(1, t / 0.07), r = Math.min(1, (dur - t) / 0.12);
+    // the drag comes in uneven pushes, like the reference recording
+    const push = 0.45 + 0.55 * Math.max(0, Math.sin(t / (opt.stretch || 1) * (6.5 + ph) + ph * 3)) ** 0.6;
+    return a * r * push;
+  };
+
+  // grain stream (stick-slip): rate drifts, amplitudes heavy-tailed
+  let nextGrain = 0, grainLeft = 0, grainLen = 1, grainAmp = 0;
+  let tone = 0, hp = 0, hpPrev = 0, lp1 = 0, lp2 = 0, rum = 0, bp = 0;
+  const knockAt = clatter ? Math.floor((dur - 0.04 - rnd() * 0.08) * sr) : -1;
+
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, e = env(t);
+    // excitation
+    let x = 0;
+    if (e > 0) {
+      if (i >= nextGrain) {
+        const st = opt.stretch || 1, ts = t / st;   // stretched: slower grains and slower pushes
+        const rate = (35 + 70 * rnd()) / st * (0.7 + 0.6 * Math.sin(ts * 9.1 + 0.4) ** 2);
+        nextGrain = i + Math.max(1, Math.floor(sr * (-Math.log(1 - rnd()) / rate)));
+        grainLen = Math.floor(sr * (0.0015 + rnd() * 0.004)); grainLeft = grainLen;
+        const u = rnd(); grainAmp = (u < 0.15 ? 1 : u < 0.45 ? 0.3 : 0.06) * (0.6 + 0.4 * rnd());
+      }
+      if (grainLeft > 0) { x += (rnd() * 2 - 1) * grainAmp * (grainLeft / grainLen); grainLeft--; }
+      x *= e;
+    }
+    // final knock of the clatter
+    if (i === knockAt) for (const m of modes) { m.y1 += 0.012 * (rnd() * 0.6 + 0.7); }
+    if (knockAt > 0 && i === knockAt) for (const m of modes) m.ring = true;
+
+    // modes
+    let ym = 0;
+    for (const m of modes) {
+      const y = m.a1 * m.y1 + m.a2 * m.y2 + x * m.g;
+      m.y2 = m.y1; m.y1 = y; ym += y;
+      if (m.ring) { // after the knock: let the mode ring longer
+        const r = m.ringR; m.a1 = 2 * r * Math.cos(m.w); m.a2 = -r * r; m.ring = false;
+      }
+    }
+    // gritty broadband hiss (high-passed noise, chopped by the grain stream)
+    const nz = rnd() * 2 - 1;
+    hp = 0.86 * (hp + nz - hpPrev); hpPrev = nz;
+    const hiss = opt.dark ? 0 : hp * e * (0.003 + 0.25 * Math.abs(x));
+    // low body rumble 120–400 Hz
+    lp1 += (nz - lp1) * 0.06; lp2 += (lp1 - lp2) * 0.06; bp = lp1 - lp2;
+    rum = bp * e * (opt.dark ? 0.6 : 0.35);
+    const raw = ym * 0.55 + hiss * 0.5 + rum * 0.7;
+    tone += (raw - tone) * (opt.dark ? 0.12 : 0.55);            // gentle top roll-off (~6 kHz)
+    out[i] = tone;
+  }
+  // normalise to a fixed peak, soft-clip
+  // level set by the drag itself (RMS of the scrape part), so the final ring never dominates
+  let ss = 0; const m = knockAt > 0 ? knockAt : Math.floor(dur * sr); for (let i = 0; i < m; i++) ss += out[i] * out[i];
+  const rms = Math.sqrt(ss / m) || 1, k = (opt.dark ? 0.12 : 0.2) / rms;
+  const fo = Math.floor(0.04 * sr);
+  for (let i = 0; i < n; i++) { const v = out[i] * k * Math.min(1, (n - i) / fo); out[i] = v > 0.95 ? 0.95 + (v - 0.95) * 0.1 : v < -0.95 ? -0.95 + (v + 0.95) * 0.1 : v; }
+  return out;
+}
+
+
+// ---- audio.js ----
+// ============================================================
+// STAIRWAYS — procedural audio (WebAudio, no files)
+// "The game must be very silent, like a deserted square."
+// ============================================================
+
+const Audio = (() => {
+  let ctx = null, master, sfxBus, musBus, verb, noiseBuf, grindBufs = null;
+  let musicOn = false, musicTimer = null, ambient = null, machine = null;
+  const vol = { music: 0.6, sfx: 0.8 };
+
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = vol.sfx; sfxBus.connect(master);
+    musBus = ctx.createGain(); musBus.gain.value = vol.music; musBus.connect(master);
+    // simple feedback-delay "reverb" for the empty piazza
+    verb = ctx.createDelay(1.0); verb.delayTime.value = 0.23;
+    const fb = ctx.createGain(); fb.gain.value = 0.38;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+    verb.connect(lp); lp.connect(fb); fb.connect(verb);
+    const wet = ctx.createGain(); wet.gain.value = 0.35; lp.connect(wet); wet.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // a few grinding takes, built in small slices so start-up stays smooth
+    grindBufs = []; let gi = 0;
+    const makeGrind = () => {
+      const data = synthGrind(ctx.sampleRate, { seed: 1000 + gi * 7919, pitch: 0.9 + (gi % 3) * 0.08, clatter: false, dark: true, dur: 1.65 + (gi % 3) * 0.18, stretch: 1.25 });
+      const b = ctx.createBuffer(1, data.length, ctx.sampleRate); b.getChannelData(0).set(data); grindBufs.push(b);
+      if (++gi < 6) setTimeout(makeGrind, 30);
+    };
+    setTimeout(makeGrind, 50);
+    startAmbient();
+  }
+
+  function setVolumes(m, s) {
+    vol.music = m; vol.sfx = s;
+    if (!ctx) return;
+    musBus.gain.setTargetAtTime(m, ctx.currentTime, 0.1);
+    sfxBus.gain.setTargetAtTime(s, ctx.currentTime, 0.1);
+  }
+
+  function noise(dur, freq, q, gain, type, when, sendVerb) {
+    if (!ctx) return;
+    const t = (when || ctx.currentTime);
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const f = ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q || 1;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(sfxBus); if (sendVerb) g.connect(verb);
+    src.start(t, Math.random()); src.stop(t + dur + 0.05);
+    return f;
+  }
+  function tone(freq, dur, gain, type, when, bus, attack) {
+    if (!ctx) return;
+    const t = when || ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = type || 'sine'; o.frequency.value = freq;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + (attack || 0.005)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus || sfxBus); g.connect(verb);
+    o.start(t); o.stop(t + dur + 0.05);
+    return o;
+  }
+
+  const sfx = {
+    step(surface) {
+      if (surface === 'stair') { noise(0.07, 1500 + Math.random() * 300, 3, 0.18, 'bandpass'); tone(180 + Math.random() * 20, 0.06, 0.05, 'triangle'); }
+      else noise(0.09, 650 + Math.random() * 200, 1.4, 0.22, 'bandpass', null, true);
+    },
+    jump() { const f = noise(0.22, 500, 0.8, 0.12, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(2200, ctx.currentTime + 0.2); },
+    land(hard) { noise(0.16, 260, 0.9, hard ? 0.5 : 0.3, 'lowpass', null, true); tone(70, 0.18, hard ? 0.35 : 0.2, 'sine'); },
+    lock() { const t = ctx.currentTime; noise(0.3, 220, 1, 0.5, 'lowpass', t + 0.15, true); tone(70, 0.4, 0.3, 'square', t + 0.15); tone(1400, 0.08, 0.05, 'square', t + 0.32); },
+    wrap() { const f = noise(0.35, 300, 0.7, 0.14, 'bandpass'); if (f) f.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.3); tone(220, 0.4, 0.04, 'sine'); },
+    // metal grinding scrape & clatter (sampled-style, synthesised once in grind.js). Once per revolution.
+    scrape(vol, pitch) {
+      if (!grindBufs) return;
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      const src = ctx.createBufferSource(); src.buffer = grindBufs[Math.floor(Math.random() * grindBufs.length)];
+      src.playbackRate.value = Math.min(1, pitch || 1) * (0.95 + Math.random() * 0.08);
+      const g = ctx.createGain(); g.gain.value = 0.7 * v;
+      const send = ctx.createGain(); send.gain.value = 0.2;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.5;   // no screech, no highs
+      src.connect(lp); lp.connect(g); g.connect(sfxBus); g.connect(send); send.connect(verb);
+      src.start(t);
+    },
+    // air whoosh when a moving platform sets off (outward or back)
+    swoosh(vol) {
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      const f = noise(0.9, 200, 0.9, 0.5 * v, 'bandpass', t, true);
+      if (f) { f.frequency.setValueAtTime(160, t); f.frequency.exponentialRampToValueAtTime(900, t + 0.35); f.frequency.exponentialRampToValueAtTime(220, t + 0.85); }
+      tone(70, 0.5, 0.12 * v, 'sine', t);
+    },
+    ratchet(vol, pitch) {
+      const t = ctx.currentTime, v = Math.max(0, Math.min(1, vol));
+      noise(0.025, 2600 * (pitch || 1), 9, 0.22 * v, 'bandpass', t, true);
+      tone(1150 * (pitch || 1), 0.05, 0.05 * v, 'square', t + 0.004);
+      noise(0.04, 700 * (pitch || 1), 3, 0.12 * v, 'bandpass', t + 0.012);
+    },
+    tick() { noise(0.03, 3200, 8, 0.16, 'bandpass'); },
+    timeup() { const t = ctx.currentTime; tone(330, 0.5, 0.06, 'sine', t); tone(247, 0.7, 0.06, 'sine', t + 0.18); },
+    plate(down) { noise(0.08, down ? 300 : 500, 2, 0.3, 'bandpass', null, true); tone(down ? 120 : 160, 0.12, 0.12, 'triangle'); },
+    push() { noise(0.22, 380, 0.7, 0.18, 'lowpass'); },
+    crack() { const t = ctx.currentTime; for (let i = 0; i < 4; i++) noise(0.05, 1800 + Math.random() * 800, 5, 0.2, 'bandpass', t + i * 0.06); },
+    rubble() { noise(0.9, 240, 0.6, 0.45, 'lowpass', null, true); tone(55, 0.6, 0.2, 'sine'); },
+    attach() { tone(110, 0.25, 0.2, 'triangle'); noise(0.1, 2400, 4, 0.12, 'bandpass', null, true); },
+    lever() {
+      const t = ctx.currentTime;
+      for (let i = 0; i < 5; i++) noise(0.04, 2500 - i * 200, 6, 0.18, 'bandpass', t + i * 0.035);
+      noise(0.25, 180, 1, 0.45, 'lowpass', t + 0.18, true); tone(90, 0.3, 0.25, 'square', t + 0.18);
+    },
+    memory() {
+      const t = ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { tone(f, 3.2, 0.08, 'sine', t + i * 0.12); tone(f * 2.01, 1.4, 0.02, 'sine', t + i * 0.12); });
+    },
+    death() { const t = ctx.currentTime; const o = tone(300, 1.2, 0.15, 'sine', t); if (o) o.frequency.exponentialRampToValueAtTime(60, t + 1.1); noise(1.2, 400, 0.5, 0.1, 'lowpass', t, true); },
+    exit() { const t = ctx.currentTime; tone(392, 1.5, 0.06, 'sine', t); tone(587.3, 1.8, 0.05, 'sine', t + 0.15); },
+    ui() { tone(880, 0.12, 0.05, 'sine'); },
+    thought() { tone(440, 2.2, 0.04, 'sine', null, null, 0.3); tone(660, 2.4, 0.025, 'sine', null, null, 0.4); },
+  };
+
+  // --- wind ambience ---
+  function startAmbient() {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380;
+    const g = ctx.createGain(); g.gain.value = 0.035;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07; const lg = ctx.createGain(); lg.gain.value = 0.025;
+    lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    src.connect(f); f.connect(g); g.connect(sfxBus); src.start();
+    ambient = g;
+    // machinery hum (volume driven by rotating stairs on screen)
+    const m = ctx.createOscillator(); m.type = 'sawtooth'; m.frequency.value = 46;
+    const mf = ctx.createBiquadFilter(); mf.type = 'lowpass'; mf.frequency.value = 160;
+    const mg = ctx.createGain(); mg.gain.value = 0;
+    m.connect(mf); mf.connect(mg); mg.connect(sfxBus); m.start();
+    machine = { gain: mg, osc: m, next: 0 };
+  }
+  // called each frame with 0..1 intensity of rotating machinery near the camera
+  function machinery(level) {
+    if (!ctx || !machine) return;
+    machine.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); // hum disabled: mechanisms speak through scrapes
+    if (false) { // occasional gear clank (disabled)
+      machine.next = ctx.currentTime + 0.9 + Math.random() * 2.2;
+      const t = ctx.currentTime;
+      for (let i = 0; i < 3; i++) noise(0.05, 900 + Math.random() * 600, 5, 0.06 * level, 'bandpass', t + i * 0.09, true);
+    }
+  }
+
+  // --- generative menu music: slow, sparse, melancholic ---
+  const SCALE = [220, 246.94, 261.63, 293.66, 329.63, 392, 440, 493.88, 523.25];
+  const CHORDS = [[0, 2, 4], [3, 5, 7], [2, 4, 6], [1, 3, 5]];
+  let beat = 0;
+  function musicTick() {
+    if (!musicOn || !ctx) return;
+    const t = ctx.currentTime + 0.05;
+    const ch = CHORDS[Math.floor(beat / 8) % CHORDS.length];
+    if (beat % 8 === 0) { tone(SCALE[ch[0]] / 2, 6, 0.05, 'triangle', t, musBus, 0.8); tone(SCALE[ch[2]] / 2, 6, 0.03, 'sine', t, musBus, 1.0); }
+    if (Math.random() < 0.55) {
+      const n = ch[Math.floor(Math.random() * 3)] + (Math.random() < 0.4 ? 2 : 0);
+      const f = SCALE[Math.min(SCALE.length - 1, n)];
+      tone(f, 2.4, 0.045, 'sine', t, musBus, 0.01); tone(f * 2, 0.9, 0.012, 'sine', t, musBus, 0.01);
+    }
+    beat++;
+    musicTimer = setTimeout(musicTick, 620);
+  }
+  function music(on) {
+    if (on === musicOn) return;
+    musicOn = on;
+    if (on) { init(); musicTick(); } else clearTimeout(musicTimer);
+  }
+
+  return { init, sfx: new Proxy(sfx, { get: (o, k) => (...a) => { if (ctx) try { o[k](...a); } catch (e) { } } }), music, machinery, setVolumes };
+})();
+
+// ---- main.js ----
+// ============================================================
+// STAIRWAYS — game shell: states, UI, input, save, camera
+// ============================================================
+
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const FONT_TYPE = '"American Typewriter", "Courier Prime", "Courier New", Courier, monospace';
+  const FONT_THINK = 'Georgia, "Times New Roman", serif';
+  const FONT_HAND = '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
+  const SAVE_KEY = 'stairways_save_v2', CFG_KEY = 'stairways_cfg_v2';
+  // a phone/tablet is one whose primary pointer is a finger (Macs with touch support report touch points too)
+  const isTouch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches);
+
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+  }
+  // ---------------- storage (safe) ----------------
+  const store = {
+    get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { } },
+  };
+  const cfg = Object.assign({ lang: 'en', music: 0.6, sfx: 0.8, hints: true }, store.get(CFG_KEY) || {});
+  const T = () => TEXT[cfg.lang];
+  function saveCfg() { store.set(CFG_KEY, cfg); Audio.setVolumes(cfg.music, cfg.sfx); }
+
+  // ---------------- game state ----------------
+  const G = {
+    state: 'title', prevState: null, t: 0,
+    roomIdx: 0, world: null, mem: new Set(), bg: null, bgTag: null,
+    camX: 0, fade: 1, fadeTarget: 0, fadeCb: null, fadeSpeed: 2.2,
+    thought: null, chapterCard: null, particles: [], flash: 0,
+    hintAlpha: 0, hintTimer: 0, hasMoved: false, saveTimer: 0,
+    menuSel: 0, menuItems: [], confirm: null, ending: null, creditsScroll: 0,
+    renderAng: 0, lastInput: { move: 0, jump: false }, deathCount: 0,
+    pressedStart: false,
+  };
+  window.__G = G; // debug hook
+
+  function hasSave() { return !!store.get(SAVE_KEY); }
+  function save() {
+    if (!G.world) return;
+    store.set(SAVE_KEY, { v: 2, id: ROOMS[G.roomIdx].id, room: G.roomIdx, mem: [...G.mem], at: Date.now() });
+  }
+  function memCount() { return G.mem.size; }
+
+  // ---------------- canvas sizing ----------------
+  let scale = 1, offX = 0, offY = 0, dpr = 1;
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+    scale = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
+    offX = (canvas.width - VIEW_W * scale) / 2; offY = (canvas.height - VIEW_H * scale) / 2;
+  }
+  window.addEventListener('resize', resize); resize();
+  function toLogical(cx, cy) { return [(cx * dpr - offX) / scale, (cy * dpr - offY) / scale]; }
+
+  // ---------------- input ----------------
+  const keys = {};
+  let jumpPressed = false, touchMove = 0;
+  const touches = {}; // id -> {x0,y0,x,y,side,t0,jumped}
+  window.addEventListener('keydown', e => {
+    Audio.init();
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'Space'].includes(e.key)) e.preventDefault();
+    if (e.repeat) { keys[e.code] = true; return; }
+    keys[e.code] = true;
+    if (G.state === 'play') {
+      if (['Space', 'ArrowUp', 'KeyW', 'KeyZ'].includes(e.code)) jumpPressed = true;
+      if (['Escape', 'KeyP'].includes(e.code)) openPause();
+      if (e.code === 'KeyR') restartRoom();
+      if (e.code === 'KeyN') skipRoom(1);
+      if (e.code === 'KeyB') skipRoom(-1);
+    } else onMenuKey(e.code);
+  });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+  function moveInput() {
+    let m = 0;
+    if (keys.ArrowLeft || keys.KeyA) m -= 1;
+    if (keys.ArrowRight || keys.KeyD) m += 1;
+    if (!m) m = touchMove;
+    return m;
+  }
+
+  // touch buttons (bottom-left: left/right, bottom-right: jump)
+  const BTN = { left: { x: 150, y: 775, r: 80 }, right: { x: 370, y: 775, r: 80 }, jump: { x: 1455, y: 775, r: 80 } };
+  function layoutButtons() {   // anchored to the real screen edges (uses the side bands on wide phones)
+    const ex = Math.min(260, offX / scale);
+    BTN.left.x = 130 - ex; BTN.right.x = 355 - ex; BTN.jump.x = VIEW_W - 130 + ex;
+  }
+  function btnAt(x, y) {
+    layoutButtons();
+    for (const k in BTN) { const b = BTN[k]; if (Math.hypot(x - b.x, y - b.y) < b.r + 26) return k; }
+    return null;
+  }
+  function pointerDown(id, cx, cy) {
+    Audio.init();
+    const [x, y] = toLogical(cx, cy);
+    if (G.state === 'play') {
+      if (x > VIEW_W - 110 && y < 100) { openPause(); return; }
+      if (id !== 'm' || isTouch) {
+        const b = btnAt(x, y);
+        touches[id] = { x, y, btn: b };
+        if (b === 'jump') jumpPressed = true;
+        updateTouchMove();
+      }
+      return;
+    }
+    touches[id] = { x0: x, y0: y, x, y, side: 'M', t0: G.t };
+    onMenuPointer(x, y, 'down');
+  }
+  function pointerMove(id, cx, cy) {
+    const [x, y] = toLogical(cx, cy);
+    const tc = touches[id];
+    if (!tc) { if (G.state !== 'play') onMenuPointer(x, y, 'hover'); return; }
+    tc.x = x; tc.y = y;
+    if (G.state !== 'play') onMenuPointer(x, y, 'drag');
+    if (G.state === 'play' && tc.btn !== undefined) {
+      const b = btnAt(x, y);
+      if (tc.btn !== 'jump' && b !== 'jump') tc.btn = b;   // slide between left and right
+    }
+    updateTouchMove();
+  }
+  function pointerUp(id, cx, cy) {
+    const tc = touches[id]; delete touches[id];
+    if (tc && G.state !== 'play') { const [x, y] = toLogical(cx, cy); onMenuPointer(x, y, 'up'); }
+    updateTouchMove();
+  }
+  function updateTouchMove() {
+    touchMove = 0;
+    for (const id in touches) {
+      const tc = touches[id];
+      if (tc.btn === 'left') touchMove = -1;
+      else if (tc.btn === 'right') touchMove = 1;
+    }
+  }
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); for (const t of e.changedTouches) pointerDown(t.identifier, t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) pointerMove(t.identifier, t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener('touchend', e => { e.preventDefault(); for (const t of e.changedTouches) pointerUp(t.identifier, t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener('touchcancel', e => { for (const t of e.changedTouches) pointerUp(t.identifier, t.clientX, t.clientY); });
+  canvas.addEventListener('mousedown', e => pointerDown('m', e.clientX, e.clientY));
+  window.addEventListener('mousemove', e => pointerMove('m', e.clientX, e.clientY));
+  window.addEventListener('mouseup', e => { if (touches.m) pointerUp('m', e.clientX, e.clientY); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play') openPause(); });
+
+  // ---------------- fades ----------------
+  function fadeTo(target, cb, speed) { G.fadeTarget = target; G.fadeCb = cb || null; G.fadeSpeed = speed || 2.2; }
+
+  // ---------------- optional painted backgrounds ----------------
+  // Drop assets/bg_PNT.png (…BAL, JGT, BTL, EPL) next to the html to replace the procedural scenes.
+  const PAINTED = {};
+  for (const c of CHAPTERS) {
+    const img = new Image();
+    img.onload = () => { PAINTED[c.tag] = img; };
+    img.src = 'assets/bg_' + c.tag + '.png';
+  }
+
+  // ---------------- rooms ----------------
+  function loadRoom(idx, opts) {
+    opts = opts || {};
+    G.roomIdx = idx;
+    const room = ROOMS[idx];
+    // a memory found in this visit counts only if Hazop gets out of the room with it:
+    // dying or restarting puts it back, so the room has to be solved again from the start
+    if (opts.respawn && G.memVisit && !room.final) { G.mem.delete(G.memVisit); G.memVisit = null; save(); }
+    G.memVisit = null;
+    G.world = createWorld(room, { memoryTaken: room.memory ? G.mem.has(room.memory.id) : true });
+    G.finale = null;
+    if (room.final && room.memory && G.mem.has(room.memory.id)) {   // fell during the finale: back on the clock tower, stairs joining again
+      const P = G.world.player; P.x = room.memory.x; P.y = room.memory.y + 45;
+      setTimeout(() => { if (G.world && G.world.room === room && !G.finale) startFinale(); }, 400);
+    }
+    const tag = CHAPTERS[room.ch].tag;
+    if (!G.bg || G.bgKey !== room.id) { G.bg = buildBackground(tag, room.w, 1000 + idx * 7); G.bgKey = room.id; G.bgTag = tag; }
+    G.camX = clampCam(room.spawn.x - VIEW_W / 2);
+    G.particles = [];
+    G.renderAng = 0;
+    if (!opts.respawn) save();
+  }
+  function clampCam(x) { const w = G.world ? G.world.room.w : VIEW_W; return Math.max(0, Math.min(w - VIEW_W, x)); }
+
+  function startNewGame() {
+    store.del(SAVE_KEY);
+    G.mem = new Set(); G.deathCount = 0;
+    loadRoom(0);
+    G.hintTimer = 0; G.hasMoved = false;
+    G.state = 'intro'; G.thought = makeThought(T().intro, null); fadeTo(0, null, 1);
+    Audio.music(false); Audio.sfx.thought();
+  }
+  function continueGame() {
+    const s = store.get(SAVE_KEY);
+    if (!s) return startNewGame();
+    G.mem = new Set(s.mem || []);
+    const byId = ROOMS.findIndex(r => r.id === s.id);
+    loadRoom(byId >= 0 ? byId : Math.min(s.room || 0, ROOMS.length - 1));
+    G.hasMoved = true;
+    showChapterCard(() => { G.state = 'play'; });
+    Audio.music(false);
+  }
+  function showChapterCard(cb) {
+    const ch = ROOMS[G.roomIdx].ch, key = CHAPTERS[ch].key;
+    G.chapterCard = { t: 0, title: T()[key], name: T()[key + 'n'], tag: CHAPTERS[ch].tag, cb };
+    G.state = 'chapter'; fadeTo(0, null, 1.2);
+  }
+
+  // test shortcut: jump straight to another room (N = next, B = previous)
+  function skipRoom(d) {
+    const next = Math.max(0, Math.min(ROOMS.length - 1, G.roomIdx + d));
+    if (next === G.roomIdx) return;
+    const newChapter = ROOMS[next].ch !== ROOMS[G.roomIdx].ch;
+    loadRoom(next); G.hasMoved = true; G.roomLabel = 3;
+    G.fade = 0; G.fadeTarget = 0;
+    if (newChapter) showChapterCard(() => { G.state = 'play'; }); else G.state = 'play';
+  }
+
+  // ---------------- thoughts ----------------
+  function makeThought(lines, memId) {
+    return { lines: Array.isArray(lines) ? lines : [lines], memId, t: 0, chars: 0, done: false };
+  }
+  function thoughtFullLen(th) { return th.lines.join('').length; }
+  function advanceThought() {
+    const th = G.thought;
+    if (!th) return;
+    if (th.chars < thoughtFullLen(th)) { th.chars = thoughtFullLen(th); return; }
+    Audio.sfx.ui();
+    G.thought = null;
+    if (G.state === 'intro') { showChapterCard(() => { G.state = 'play'; G.hintTimer = 0; }); return; }
+    if (G.state === 'thought') {
+      G.state = 'play';
+      if (ROOMS[G.roomIdx].final) startFinale();
+    }
+  }
+
+  // ---------------- finale: the stairs stop and join into one straight staircase ----------------
+  function startFinale() {
+    const w = G.world, P = w.player;
+    // where Hazop stands: the staircase starts just above his platform and climbs, shallow, out of the sky
+    const plat = w.platforms.find(p => p.id === P.plat) || w.platforms.reduce((a, b) => (a.y < b.y ? a : b));
+    const A = 12 * Math.PI / 180;                   // stair angle: line rising to the left
+    const dir = { x: -Math.cos(A), y: -Math.sin(A) };
+    const start = { x: plat.x + Math.min(plat.w - 30, 120), y: plat.y - 34 };
+    const order = w.stairs.slice().sort((a, b) => b.x - a.x);   // nearest first
+    let run = 0;
+    const moves = order.map((st, i) => {
+      const c = { x: start.x + dir.x * (run + st.len / 2), y: start.y + dir.y * (run + st.len / 2) };
+      run += st.len;
+      let a1 = A; while (a1 - st.ang > Math.PI) a1 -= 2 * Math.PI; while (st.ang - a1 > Math.PI) a1 += 2 * Math.PI;
+      if (Math.abs(a1 - st.ang) > Math.PI / 2) a1 += a1 > st.ang ? -Math.PI : Math.PI;   // a stair looks the same turned by 180°
+      return { st, x0: st.x, y0: st.y, a0: st.ang, x1: c.x, y1: c.y, a1, delay: 0.6 + i * 0.7, locked: false };
+    });
+    for (const st of w.stairs) { st.on = false; st.ride = false; st.link = null; st.kind = 'static'; st.angVel = 0; }
+    if (P.state === 'stair') { P.state = 'air'; P.stair = null; }
+    G.finale = { t: 0, moves, start, dir, total: run, A, merged: false, out: false };
+    Audio.sfx.timeup();
+  }
+  function updateFinale(dt) {
+    const F = G.finale, w = G.world, P = w.player;
+    F.t += dt;
+    if (!F.merged) {
+      let all = true;
+      for (const m of F.moves) {
+        const k = Math.max(0, Math.min(1, (F.t - m.delay) / 2.2)), e = k * k * (3 - 2 * k);
+        m.st.x = m.x0 + (m.x1 - m.x0) * e; m.st.y = m.y0 + (m.y1 - m.y0) * e; m.st.ang = m.a0 + (m.a1 - m.a0) * e;
+        if (k >= 1 && !m.locked) { m.locked = true; Audio.sfx.lock(); puff(m.st.x, m.st.y, 8, 'rgba(70,55,45,.45)', 160, 40); }
+        if (k < 1) all = false;
+      }
+      if (P.state === 'stair') { P.state = 'air'; P.stair = null; }   // nobody rides while they move
+      if (all) {   // one single straight staircase
+        F.merged = true;
+        const c = { x: F.start.x + F.dir.x * F.total / 2, y: F.start.y + F.dir.y * F.total / 2 };
+        w.stairs = [{ id: 'final', x: c.x, y: c.y, len: F.total, ang: F.A, angVel: 0, kind: 'static', on: false, dir: 1, speed: 0,
+          min: 0, max: 0, rest: F.A, steps: Math.round(F.total / 36), flip: false, ride: false, link: null, ang0: F.A }];
+        Audio.sfx.scrape(0.8, 0.8);
+      }
+    } else if (!F.out && P.y < 30) {
+      F.out = true;
+      fadeTo(1, () => { G.finale = null; G.fade = 0; G.fadeTarget = 0; beginEnding(); }, 0.6);
+    }
+  }
+
+  // ---------------- ending ----------------
+  function beginEnding() {
+    G.state = 'ending'; G.ending = { t: 0 };
+    store.del(SAVE_KEY);
+    Audio.music(true);
+  }
+
+  // ---------------- particles ----------------
+  function puff(x, y, n, col, spread, up) {
+    for (let i = 0; i < n; i++) G.particles.push({ x, y, vx: (Math.random() - 0.5) * spread, vy: -Math.random() * (up || 60), life: 0.6 + Math.random() * 0.5, t: 0, col, r: 2 + Math.random() * 4 });
+  }
+  function sparkle(x, y) {
+    for (let i = 0; i < 46; i++) { const a = Math.random() * 6.28, s = 60 + Math.random() * 260; G.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.8 + Math.random() * 0.9, t: 0, col: '#fff6c8', r: 1.5 + Math.random() * 3, glow: true }); }
+  }
+
+  // ---------------- update ----------------
+  let acc = 0;
+  function update(dt) {
+    G.t += dt;
+    // fade
+    if (G.fade !== G.fadeTarget) {
+      const d = G.fadeSpeed * dt;
+      G.fade = G.fade < G.fadeTarget ? Math.min(G.fadeTarget, G.fade + d) : Math.max(G.fadeTarget, G.fade - d);
+      if (G.fade === G.fadeTarget && G.fadeCb) { const cb = G.fadeCb; G.fadeCb = null; cb(); }
+    }
+    if (G.thought) { G.thought.t += dt; G.thought.chars = Math.min(thoughtFullLen(G.thought), G.thought.chars + dt * 34); }
+    if (G.state === 'chapter') {
+      const c = G.chapterCard; c.t += dt;
+      if (c.t > 3.2 && !c.leaving) { c.leaving = true; const cb = c.cb; G.chapterCard = null; cb && cb(); }
+    }
+    if (G.state === 'ending') updateEnding(dt);
+
+    if (G.state === 'play' || G.state === 'chapter' || G.state === 'intro') updateCamera(dt);
+    if (G.state === 'play') {
+      acc += dt;
+      let steps = 0;
+      const input = { move: moveInput(), jump: jumpPressed };
+      if (input.move || input.jump) { if (!G.hasMoved) G.hasMoved = true; }
+      jumpPressed = false;
+      if (G.finale) updateFinale(dt);
+      while (acc >= PHYS.DT && steps < 8) {
+        stepWorld(G.world, input, PHYS.DT);
+        input.jump = false;
+        acc -= PHYS.DT; steps++;
+        handleEvents();
+        if (G.state !== 'play') { acc = 0; break; }
+      }
+      G.saveTimer += dt;
+      if (G.saveTimer > 15) { G.saveTimer = 0; save(); }
+      G.hintTimer += dt;
+      // machinery sound level
+      let lvl = 0;
+      for (const st of G.world.stairs) if (st.kind === 'rot' && st.on) { const dx = Math.abs(st.x - (G.camX + VIEW_W / 2)); lvl = Math.max(lvl, 1 - Math.min(1, dx / 1200)); }
+      Audio.machinery(lvl);
+      // ratchet: a metallic click every few degrees of rotation / pixels of travel, louder when near
+      const near = x => Math.max(0, 1 - Math.abs(x - (G.camX + VIEW_W / 2)) / 1100);
+      // Only ONE stair makes the scrape: the turning stair closest to Hazop. The others turn in silence.
+      let lead = null, leadD = Infinity;
+      G.world.stairs.forEach(st => {
+        const turning = Math.abs(st.angVel || 0) > 0.02 && st.kind !== 'weight';
+        if (turning) { const d = Math.abs(st.x - G.world.player.x); if (d < leadD) { leadD = d; lead = st; } }
+      });
+      if (lead !== G.scrapeLead) { G.scrapeLead = lead; if (lead) lead._rev = Math.PI - 0.5 * Math.abs(lead.angVel); }   // new leader: sound after ~0.5 s
+      if (lead) {
+        lead._rev += Math.abs(lead.angVel) * dt;
+        if (lead._rev >= Math.PI) {   // a stair looks the same after half a turn, so that is its 'giro'
+          lead._rev -= Math.PI;
+          const v = near(lead.x); if (v > 0.05) Audio.sfx.scrape(v, 0.9);
+        }
+      }
+      // Same for moving platforms: one whoosh at a time, from the nearest platform that sets off.
+      let wv = 0;
+      for (const p of G.world.platforms) {
+        if (!p.move) continue;
+        const sp = Math.hypot(p.mdx || 0, p.mdy || 0), dir = Math.sign((p.mdx || 0) + (p.mdy || 0));
+        const moving = sp > 0.05;
+        if (moving && (!p._moving || dir !== p._dir)) wv = Math.max(wv, near(p.x + p.w / 2));
+        p._moving = moving; if (moving) p._dir = dir;
+      }
+      G.whooshCd = Math.max(0, (G.whooshCd || 0) - dt);
+      if (wv > 0.05 && G.whooshCd <= 0) { Audio.sfx.swoosh(wv); G.whooshCd = 0.8; }
+    } else Audio.machinery(0);
+    // particles
+    for (const p of G.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy = p.vy * 0.96 + (p.glow ? -10 : 30) * dt; }
+    G.particles = G.particles.filter(p => p.t < p.life);
+    G.flash = Math.max(0, G.flash - dt * 1.4);
+    // render angle smoothing
+    if (G.world) {
+      const P = G.world.player;
+      const target = Math.atan2(P.ux, -P.uy);
+      let d = target - G.renderAng; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      G.renderAng += d * Math.min(1, dt * (P.state === 'stair' ? 16 : 7));
+    }
+  }
+
+  function updateCamera(dt) {
+    if (!G.world) return;
+    const P = G.world.player;
+    const target = clampCam(P.x - VIEW_W / 2 + P.facing * 90);
+    G.camX += (target - G.camX) * (1 - Math.exp(-dt * 3.2));
+  }
+
+  function handleEvents() {
+    const w = G.world, P = w.player;
+    for (const e of w.events) {
+      switch (e.type) {
+        case 'step': Audio.sfx.step(e.surface); break;
+        case 'jump': Audio.sfx.jump(); break;
+        case 'land': Audio.sfx.land(e.hard); puff(P.x, P.y, e.hard ? 10 : 5, 'rgba(70,55,45,.5)', 120, 40); break;
+        case 'attach': Audio.sfx.attach(); puff(P.x, P.y, 5, 'rgba(70,55,45,.45)', 90, 30); break;
+        case 'lever': Audio.sfx.lever(); puff(e.x, e.y - 20, 8, 'rgba(255,250,220,.9)', 140, 90); break;
+        case 'wrap': break;
+        case 'lock': Audio.sfx.lock(); break;
+        case 'tick': Audio.sfx.tick(); break;
+        case 'timeup': Audio.sfx.timeup(); puff(e.x, e.y - 20, 6, 'rgba(255,250,220,.7)', 100, 60); break;
+        case 'plate': Audio.sfx.plate(e.down); break;
+        case 'balstop': Audio.sfx.plate(true); break;
+        case 'push': Audio.sfx.push(); break;
+        case 'crateland': Audio.sfx.land(true); puff(e.x, e.y, 6, 'rgba(70,55,45,.5)', 120, 30); break;
+        case 'crateback': break;
+        case 'crumble': Audio.sfx.crack(); puff(e.x, e.y, 6, 'rgba(90,76,68,.6)', 160, 20); break;
+        case 'crumbled': Audio.sfx.rubble(); puff(e.x, e.y + 10, 16, 'rgba(90,76,68,.7)', 260, 10); break;
+        case 'memory':
+          if (!G.mem.has(e.id)) G.memVisit = e.id;
+          G.mem.add(e.id); Audio.sfx.memory(); sparkle(e.x, e.y); G.flash = 1;
+          save();
+          G.state = 'thought'; G.thought = makeThought(T().mem[e.id], e.id);
+          break;
+        case 'exit':
+          Audio.sfx.exit();
+          G.state = 'transition';
+          fadeTo(1, () => {
+            const next = G.roomIdx + 1;
+            const newChapter = ROOMS[next] && ROOMS[next].ch !== ROOMS[G.roomIdx].ch;
+            loadRoom(next);
+            if (newChapter) showChapterCard(() => { G.state = 'play'; });
+            else { G.state = 'play'; fadeTo(0, null, 2); }
+          }, 2);
+          break;
+        case 'death':
+          Audio.sfx.death(); G.deathCount++;
+          G.state = 'transition';
+          fadeTo(1, () => { loadRoom(G.roomIdx, { respawn: true }); G.state = 'play'; fadeTo(0, null, 1.6); }, 1.4);
+          break;
+      }
+    }
+    w.events.length = 0;
+  }
+
+  function updateEnding(dt) {
+    const E = G.ending; E.t += dt;
+    G.creditsScroll = Math.min(220, Math.max(0, E.t - 5) * 38);
+  }
+
+  // ---------------- menus ----------------
+  function openPause() {
+    if (G.state !== 'play') return;
+    G.prevState = 'play'; G.state = 'pause'; G.menuSel = 0; Audio.sfx.ui(); save();
+  }
+  function menuDef() {
+    const t = T();
+    switch (G.state) {
+      case 'menu': {
+        const it = [];
+        if (hasSave()) { it.push({ label: t.cont, act: () => { Audio.sfx.ui(); fadeTo(1, () => continueGame(), 2.5); G.state = 'transition'; } }); it.push({ label: t.newgame, act: () => { G.confirm = { yes: () => { fadeTo(1, () => startNewGame(), 2.5); G.state = 'transition'; } }; G.state = 'confirm'; G.menuSel = 1; } }); }
+        else it.push({ label: t.start, act: () => { Audio.sfx.ui(); fadeTo(1, () => startNewGame(), 2.5); G.state = 'transition'; } });
+        it.push({ label: t.config, act: () => { G.prevState = 'menu'; G.state = 'config'; G.menuSel = 0; } });
+        it.push({ label: t.quit, act: () => quitGame() });
+        return it;
+      }
+      case 'pause': return [
+        { label: t.resume, act: () => { G.state = 'play'; } },
+        { label: t.config, act: () => { G.prevState = 'pause'; G.state = 'config'; G.menuSel = 0; } },
+        { label: t.restart, act: () => restartRoom() },
+        { label: t.skip, act: () => skipRoom(1) },
+        { label: t.toMenu, act: () => { save(); G.world = null; G.prevState = null; G.state = 'menu'; G.menuSel = 0; Audio.music(true); } },
+        { label: t.quit, act: () => { save(); quitGame(); } },
+      ];
+      case 'config': {
+        const langs = Object.keys(TEXT);
+        const pct = v => Math.round(v * 100) + '%';
+        return [
+          { label: t.language, value: TEXT[cfg.lang].lang, adj: d => { cfg.lang = langs[(langs.indexOf(cfg.lang) + d + langs.length) % langs.length]; } },
+          { label: t.music, value: pct(cfg.music), level: cfg.music, set: f => { cfg.music = Math.round(f * 10) / 10; }, adj: d => { cfg.music = Math.max(0, Math.min(1, Math.round((cfg.music + d * 0.1) * 10) / 10)); } },
+          { label: t.sfx, value: pct(cfg.sfx), level: cfg.sfx, set: f => { cfg.sfx = Math.round(f * 10) / 10; }, adj: d => { cfg.sfx = Math.max(0, Math.min(1, Math.round((cfg.sfx + d * 0.1) * 10) / 10)); Audio.sfx.step('stone'); } },
+          { label: t.fullscreen, value: document.fullscreenElement ? t.on : t.off, adj: () => toggleFullscreen() },
+          { label: t.back, act: () => { saveCfg(); G.state = G.prevState || 'menu'; G.menuSel = 0; } },
+        ];
+      }
+      case 'confirm': return [
+        { label: t.yes, act: () => { const c = G.confirm; G.confirm = null; c.yes(); } },
+        { label: t.no, act: () => { G.confirm = null; G.state = 'menu'; G.menuSel = 0; } },
+      ];
+    }
+    return [];
+  }
+  // start the room again (memories already found stay found): the way out of a stuck crate or lever
+  function restartRoom() {
+    if (!G.world) return;
+    G.state = 'transition';
+    fadeTo(1, () => { loadRoom(G.roomIdx, { respawn: true }); G.state = 'play'; fadeTo(0, null, 1.6); }, 2.4);
+  }
+  function toggleFullscreen() {
+    try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { }
+  }
+  function quitGame() {
+    G.state = 'goodbye'; Audio.music(false);
+    try { window.close(); } catch (e) { }
+  }
+
+  function onMenuKey(code) {
+    if (G.state === 'title') { goMenu(); return; }
+    if (G.state === 'intro' || G.state === 'thought') { if (['Space', 'Enter', 'ArrowUp', 'KeyW', 'KeyZ'].includes(code)) advanceThought(); return; }
+    if (G.state === 'chapter') { if (G.chapterCard && G.chapterCard.t > 0.6) G.chapterCard.t = 99; return; }
+    if (G.state === 'credits') { G.state = G.prevState || 'menu'; return; }
+    if (G.state === 'goodbye') { G.state = 'title'; return; }
+    if (G.state === 'ending') { if (G.ending.t > 8) finishEnding(); return; }
+    const items = menuDef(); if (!items.length) return;
+    if (code === 'ArrowDown' || code === 'KeyS') { G.menuSel = (G.menuSel + 1) % items.length; Audio.sfx.ui(); }
+    else if (code === 'ArrowUp' || code === 'KeyW') { G.menuSel = (G.menuSel - 1 + items.length) % items.length; Audio.sfx.ui(); }
+    else if ((code === 'ArrowLeft' || code === 'KeyA') && items[G.menuSel].adj) { items[G.menuSel].adj(-1); saveCfg(); Audio.sfx.ui(); }
+    else if ((code === 'ArrowRight' || code === 'KeyD') && items[G.menuSel].adj) { items[G.menuSel].adj(1); saveCfg(); Audio.sfx.ui(); }
+    else if (code === 'Enter' || code === 'Space') { const it = items[G.menuSel]; if (it.act) it.act(); else if (it.adj) { it.adj(1); saveCfg(); } Audio.sfx.ui(); }
+    else if (code === 'Escape') {
+      if (G.state === 'pause') G.state = 'play';
+      else if (G.state === 'config') { saveCfg(); G.state = G.prevState || 'menu'; G.menuSel = 0; }
+      else if (G.state === 'confirm') { G.state = 'menu'; }
+    }
+  }
+  function finishEnding() { G.ending = null; G.world = null; G.state = 'menu'; G.menuSel = 0; fadeTo(0, null, 1); }
+  function goMenu() { G.prevState = null; G.state = 'menu'; G.menuSel = 0; Audio.music(true); Audio.sfx.ui(); }
+
+  let menuRects = [];
+  function onMenuPointer(x, y, kind) {
+    if (kind === 'down') {
+      if (G.state === 'title') { goMenu(); return; }
+      if (G.state === 'intro' || G.state === 'thought') { advanceThought(); return; }
+      if (G.state === 'chapter') { if (G.chapterCard && G.chapterCard.t > 0.6) G.chapterCard.t = 99; return; }
+      if (G.state === 'credits') { G.state = G.prevState || 'menu'; return; }
+      if (G.state === 'goodbye') { G.state = 'title'; return; }
+      if (G.state === 'ending') { if (G.ending.t > 8) finishEnding(); return; }
+    }
+    for (let i = 0; i < menuRects.length; i++) {
+      const r = menuRects[i];
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        if (kind === 'hover') { if (G.menuSel !== i) G.menuSel = i; return; }
+        const it = menuDef()[i];
+        const hit = q => q && x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h;
+        if (kind === 'drag') {
+          if (it.set && hit(r.bar)) { const v = (x - r.bar.x) / r.bar.w; it.set(Math.max(0, Math.min(1, v))); saveCfg(); }
+          return;
+        }
+        if (kind === 'down') {
+          G.menuSel = i;
+          if (it.adj) {
+            if (hit(r.minus)) it.adj(-1);
+            else if (hit(r.plus)) it.adj(1);
+            else if (it.set && hit(r.bar)) it.set(Math.max(0, Math.min(1, (x - r.bar.x) / r.bar.w)));
+            else if (!it.set) it.adj(1);          // language / fullscreen: tapping the row cycles
+            else return;
+            saveCfg(); Audio.sfx.ui();
+          }
+          else if (it.act) { Audio.sfx.ui(); it.act(); }
+        }
+        return;
+      }
+    }
+  }
+
+  // ---------------- rendering ----------------
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = COL.letter; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, offX, offY);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, VIEW_W, VIEW_H); ctx.clip();
+
+    const overWorld = G.prevState === 'pause' && (G.state === 'config' || G.state === 'credits') && G.world;
+    if ((['title', 'menu', 'config', 'credits', 'confirm', 'goodbye'].includes(G.state) && !overWorld) || (G.state === 'transition' && !G.world)) drawTitleScene();
+    else if (G.world) drawWorld();
+
+    switch (G.state) {
+      case 'title': drawTitleText(); drawVersion(); break;
+      case 'menu': case 'confirm': drawMenuPanel(); drawVersion(); break;
+      case 'config': drawMenuPanel(true); break;
+      case 'pause': dim(0.45); drawMenuPanel(); break;
+      case 'credits': drawCredits(); break;
+      case 'intro': case 'thought': drawThought(); break;
+      case 'chapter': drawChapterCard(); break;
+      case 'ending': drawEnding(); break;
+      case 'goodbye': drawGoodbye(); break;
+    }
+    if (G.state === 'play') drawHUD();
+    ctx.restore(); ctx.save();
+    if (G.state === 'play' && isTouch) drawTouchButtons();
+    if (G.fade > 0) { ctx.fillStyle = `rgba(20,14,13,${G.fade})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (isPortrait()) drawRotateHint();
+    ctx.restore();
+  }
+  function isPortrait() { return isTouch && window.innerHeight > window.innerWidth * 1.1; }
+  function dim(a) { ctx.fillStyle = `rgba(30,22,20,${a})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+
+  let titleBg = null;
+  function drawTitleScene() {
+    if (!titleBg) titleBg = buildBackground('PNT', VIEW_W, 42);
+    ctx.drawImage(titleBg.back, 0, 0); ctx.drawImage(titleBg.mid, 0, 0);
+    vignette(0.5);
+    const n = Math.min(21, memCountForTitle());
+    drawHazop(ctx, { x: 800, y: 795, facing: 1, walkPhase: 0 }, n, G.t, { scale: 3.7 });
+  }
+  function memCountForTitle() { const s = store.get(SAVE_KEY); return s ? (s.mem || []).length : 0; }
+
+  function drawTitleText() {
+    ctx.save();
+    ctx.textAlign = 'center';
+    drawTitleWord(ctx, 'STAIRWAYS', VIEW_W / 2, 380, 118, 0.12, '#fbf8ea', 'rgba(40,25,20,.38)');
+    ctx.font = `italic 40px ${FONT_THINK}`; ctx.fillStyle = 'rgba(40,25,20,.35)'; ctx.fillText(T().tagline, VIEW_W / 2 + 2, 462);
+    ctx.fillStyle = 'rgba(255,252,235,.95)'; ctx.fillText(T().tagline, VIEW_W / 2, 460);
+    ctx.globalAlpha = 0.5 + Math.sin(G.t * 2.5) * 0.35;
+    ctx.font = `26px ${FONT_TYPE}`; ctx.fillStyle = 'rgba(40,25,20,.6)'; ctx.fillText('— ' + T().tapContinue + ' —', 802, 847); ctx.fillStyle = '#fbf8ea'; ctx.fillText('— ' + T().tapContinue + ' —', 800, 845);
+    ctx.restore();
+  }
+
+  function drawVersion() {
+    if (typeof GAME_VERSION === 'undefined') return;
+    ctx.save(); ctx.textAlign = 'right'; ctx.font = `18px ${FONT_TYPE}`;
+    ctx.fillStyle = 'rgba(251,248,234,.55)'; ctx.fillText('v' + GAME_VERSION, VIEW_W - 20, VIEW_H - 18);
+    ctx.restore();
+  }
+
+  function drawMenuPanel(wide) {
+    const items = menuDef();
+    const t = T();
+    const pw = wide ? 760 : 560, rowH = 70;
+    let ph = items.length * rowH + 60;
+    if (G.state === 'confirm') ph += 90;
+    const px = (VIEW_W - pw) / 2 + (G.state === 'menu' || G.state === 'confirm' ? 260 : 0), py = (VIEW_H - ph) / 2 - 60;
+    ctx.save();
+    ctx.fillStyle = 'rgba(245,240,225,.84)'; ctx.fillRect(px, py, pw, ph);
+    ctx.strokeStyle = 'rgba(64,44,45,.25)'; ctx.lineWidth = 2; ctx.strokeRect(px + 8, py + 8, pw - 16, ph - 16);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    let y0 = py + 30 + rowH / 2;
+    if (G.state === 'confirm') {
+      ctx.font = `italic 28px ${FONT_THINK}`; ctx.fillStyle = COL.brown;
+      wrapText(t.confirmNew, px + pw / 2, py + 60, pw - 80, 34);
+      y0 += 90;
+    }
+    menuRects = [];
+    items.forEach((it, i) => {
+      const y = y0 + i * rowH;
+      const sel = i === G.menuSel;
+      const rect = { x: px, y: y - rowH / 2, w: pw, h: rowH }; menuRects.push(rect);
+      if (sel) { ctx.fillStyle = 'rgba(118,174,129,.28)'; ctx.fillRect(px + 20, y - rowH / 2 + 6, pw - 40, rowH - 12); }
+      ctx.fillStyle = sel ? '#1b1515' : '#4d3b38';
+      if (it.value != null) {
+        ctx.font = `30px ${FONT_TYPE}`; ctx.textAlign = 'left'; ctx.fillText(it.label.toUpperCase(), px + 50, y);
+        // clickable  [‹]  value  [›]  controls
+        const bs = 46, right = px + pw - 40, midW = 200;
+        rect.plus = { x: right - bs, y: y - bs / 2, w: bs, h: bs };
+        rect.minus = { x: right - bs - midW - bs - 16, y: y - bs / 2, w: bs, h: bs };
+        const cx0 = rect.minus.x + bs + 8, cw = midW;
+        for (const [q, dir] of [[rect.minus, -1], [rect.plus, 1]]) {
+          ctx.fillStyle = sel ? 'rgba(64,44,45,.16)' : 'rgba(64,44,45,.08)'; ctx.fillRect(q.x, q.y, q.w, q.h);
+          ctx.strokeStyle = 'rgba(64,44,45,.45)'; ctx.lineWidth = 2; ctx.strokeRect(q.x + 1, q.y + 1, q.w - 2, q.h - 2);
+          ctx.strokeStyle = sel ? '#1b1515' : '#4d3b38'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          const qx = q.x + q.w / 2, qy = q.y + q.h / 2;
+          ctx.beginPath(); ctx.moveTo(qx - 6 * dir, qy - 10); ctx.lineTo(qx + 6 * dir, qy); ctx.lineTo(qx - 6 * dir, qy + 10); ctx.stroke();
+        }
+        if (it.set) {   // segmented volume bar
+          rect.bar = { x: cx0, y: y - 24, w: cw, h: 48 };
+          const n = 10, gw = cw / n, lv = Math.round(it.level * 10);
+          for (let k = 0; k < n; k++) {
+            ctx.fillStyle = k < lv ? (sel ? '#1b1515' : '#4d3b38') : 'rgba(64,44,45,.16)';
+            const hgt = 10 + k * 2.2; ctx.fillRect(cx0 + k * gw + 3, y + 13 - hgt, gw - 6, hgt);
+          }
+        } else { ctx.fillStyle = sel ? '#1b1515' : '#4d3b38'; ctx.textAlign = 'center'; ctx.fillText(it.value, cx0 + cw / 2, y); }
+        ctx.textAlign = 'center';
+      } else { ctx.font = `36px ${FONT_TYPE}`; ctx.fillText(it.label, px + pw / 2, y); }
+    });
+    ctx.restore();
+    if (G.state === 'menu') {
+      drawTitleWord(ctx, 'STAIRWAYS', 370, 250, 82, 0.16, '#fbf8ea', 'rgba(40,25,20,.38)');
+    }
+  }
+  function wrapText(text, x, y, maxW, lh) {
+    const words = text.split(' '); let line = '', lines = [];
+    for (const w of words) { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test; }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, x, y + i * lh));
+    return lines.length;
+  }
+
+  function drawCredits() {
+    if (G.prevState === 'pause' && G.world) dim(0.6); else dim(0.55);
+    const t = T();
+    ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#fbf8ea';
+    ctx.font = `64px ${FONT_TYPE}`; ctx.fillText(t.title, VIEW_W / 2, 170);
+    ctx.font = `italic 24px ${FONT_THINK}`; ctx.fillText(t.tagline, VIEW_W / 2, 215);
+    let y = 300;
+    for (const [role, name] of t.creditsList) { ctx.font = `22px ${FONT_TYPE}`; ctx.fillStyle = 'rgba(251,248,234,.6)'; ctx.fillText(role.toUpperCase(), VIEW_W / 2, y); ctx.font = `italic 32px ${FONT_THINK}`; ctx.fillStyle = '#fbf8ea'; ctx.fillText(name, VIEW_W / 2, y + 38); y += 92; }
+    ctx.font = `20px ${FONT_TYPE}`; ctx.globalAlpha = 0.6; ctx.fillText('— ' + t.tapContinue + ' —', VIEW_W / 2, 860);
+    ctx.restore();
+  }
+
+  function drawGoodbye() {
+    dim(0.85);
+    ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#fbf8ea';
+    ctx.font = `italic 48px ${FONT_THINK}`; ctx.fillText(T().goodbye, VIEW_W / 2, 430);
+    ctx.font = `24px ${FONT_TYPE}`; ctx.globalAlpha = 0.7; ctx.fillText(T().goodbyeSub, VIEW_W / 2, 490);
+    ctx.restore();
+  }
+
+  function drawThought() {
+    const th = G.thought; if (!th) return;
+    const a = Math.min(1, th.t * 2);
+    dim(0.62 * a);
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    let remaining = Math.floor(th.chars);
+    const isMem = !!th.memId;
+    let y = isMem ? 520 : 400;
+    if (isMem) {
+      // memory object in its light
+      ctx.save(); ctx.globalAlpha = a;
+      const g = ctx.createRadialGradient(VIEW_W / 2, 300, 10, VIEW_W / 2, 300, 170);
+      g.addColorStop(0, 'rgba(255,248,210,.55)'); g.addColorStop(1, 'rgba(255,248,210,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(VIEW_W / 2, 300, 170, 0, 7); ctx.fill();
+      ctx.translate(VIEW_W / 2, 300); ctx.scale(2.6, 2.6); (ICONS[th.memId] || ICONS.pnt_painting)(ctx); ctx.restore();
+      ctx.font = `22px ${FONT_TYPE}`; ctx.fillStyle = `rgba(251,248,234,${0.65 * a})`;
+      const names = MEMORY_NAMES[cfg.lang] || MEMORY_NAMES.es;
+      ctx.fillText((names[th.memId] || '').toUpperCase(), VIEW_W / 2, 435);
+      ctx.font = `20px ${FONT_TYPE}`; ctx.fillText(`${memCount()} / ${MEMORY_ORDER.length}  ${T().memories}`, VIEW_W / 2, 468);
+    }
+    ctx.fillStyle = `rgba(255,253,244,${a})`;
+    ctx.font = `italic ${isMem ? 34 : 40}px ${FONT_THINK}`;
+    for (const line of th.lines) {
+      const shown = line.slice(0, Math.max(0, remaining)); remaining -= line.length;
+      const n = wrapTextMeasure(shown, line, VIEW_W / 2, y, 1180, 48);
+      y += n * 48 + 22;
+    }
+    if (th.chars >= thoughtFullLen(th)) {
+      ctx.globalAlpha = 0.4 + Math.sin(G.t * 3) * 0.3; ctx.font = `22px ${FONT_TYPE}`; ctx.fillText('— ' + T().tapContinue + ' —', VIEW_W / 2, 840);
+    }
+    ctx.restore();
+  }
+  // wrap based on the full line so text doesn't jump while typing
+  function wrapTextMeasure(shown, full, x, y, maxW, lh) {
+    const words = full.split(' '); let line = '', lines = [];
+    for (const w of words) { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test; }
+    if (line) lines.push(line);
+    let rem = shown.length;
+    lines.forEach((l, i) => {
+      const part = l.slice(0, Math.max(0, rem)); rem -= l.length + 1;
+      ctx.textAlign = 'left'; const wFull = ctx.measureText(l).width;
+      ctx.fillText(part, x - wFull / 2, y + i * lh); ctx.textAlign = 'center';
+    });
+    return lines.length;
+  }
+
+  function drawChapterCard() {
+    const c = G.chapterCard; if (!c) return;
+    const a = Math.min(1, c.t * 1.5) * Math.min(1, Math.max(0, 3.2 - c.t) * 1.5);
+    ctx.fillStyle = `rgba(28,20,19,${0.75 * Math.min(1, Math.max(0, 3.2 - c.t) * 1.5)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = a; ctx.fillStyle = '#fbf8ea';
+    ctx.font = `28px ${FONT_TYPE}`; ctx.fillText(c.title.toUpperCase(), VIEW_W / 2, 400);
+    ctx.font = `italic 72px ${FONT_THINK}`; ctx.fillText(c.name, VIEW_W / 2, 480);
+    ctx.strokeStyle = 'rgba(251,248,234,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(VIEW_W / 2 - 160, 525); ctx.lineTo(VIEW_W / 2 + 160, 525); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEnding() {
+    const E = G.ending;
+    const a = Math.min(1, E.t / 3);
+    ctx.fillStyle = `rgba(255,252,238,${a})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.save(); ctx.textAlign = 'center';
+    // the fully defined Hazop
+    ctx.globalAlpha = Math.min(1, Math.max(0, (E.t - 1.5) / 2));
+    drawHazop(ctx, { x: VIEW_W / 2, y: 520 - G.creditsScroll, facing: 1, walkPhase: 0 }, 21, G.t, { scale: 3.4 });
+    ctx.fillStyle = COL.brown;
+    ctx.font = `64px ${FONT_TYPE}`; ctx.fillText(T().end[0], VIEW_W / 2, 640 - G.creditsScroll);
+    let y = 760 - G.creditsScroll;
+    ctx.font = `italic 30px ${FONT_THINK}`; ctx.fillText(T().title, VIEW_W / 2, y); y += 80;
+    ctx.font = `italic 26px ${FONT_THINK}`; ctx.fillStyle = 'rgba(64,44,45,.75)'; ctx.fillText(T().inspired, VIEW_W / 2, y);
+    if (E.t > 8) { ctx.globalAlpha = 0.4 + Math.sin(G.t * 3) * 0.3; ctx.font = `20px ${FONT_TYPE}`; ctx.fillText('— ' + T().tapContinue + ' —', VIEW_W / 2, 870); }
+    ctx.restore();
+  }
+
+  function vignette(a) {
+    const g = ctx.createRadialGradient(VIEW_W / 2, VIEW_H * 0.45, VIEW_H * 0.35, VIEW_W / 2, VIEW_H * 0.5, VIEW_H * 1.05);
+    g.addColorStop(0, 'rgba(40,25,20,0)'); g.addColorStop(1, `rgba(40,25,20,${a})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  function drawWorld() {
+    const w = G.world, room = w.room, cam = G.camX;
+    const bg = G.bg;
+    const painted = PAINTED[G.bgTag];
+    if (painted) {
+      const h = VIEW_H, w = painted.width * (h / painted.height);
+      const span = Math.max(0, w - VIEW_W), maxCam = Math.max(1, room.w - VIEW_W);
+      ctx.drawImage(painted, -span * (cam / maxCam), 0, w, h);
+    } else {
+      ctx.drawImage(bg.back, -cam * 0.15, 0);
+      ctx.drawImage(bg.mid, -cam * 0.45, 0);
+    }
+    // dreamy wash so the black vector foreground pops (as in the GDD boards)
+    ctx.fillStyle = 'rgba(250,247,226,.30)'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    // strong directional light from top-left
+    const lg = ctx.createLinearGradient(0, 0, VIEW_W, VIEW_H);
+    lg.addColorStop(0, 'rgba(255,250,215,.20)'); lg.addColorStop(0.6, 'rgba(255,250,215,0)'); lg.addColorStop(1, 'rgba(40,25,20,.12)');
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    ctx.save(); ctx.translate(-Math.round(cam), 0);
+    if (room.exit) drawExitArrow(ctx, room.exit, room, w.exitOpen, G.t);
+    for (const st of w.stairs) if (st.link) { const L = w.stairs.find(q => q.id === st.link); drawGearLink(ctx, st, L); L.gear = true; }
+    for (const B of w.balances || []) drawBalance(ctx, w.platforms.find(q => q.id === B.a), w.platforms.find(q => q.id === B.b), B.travel);
+    for (const st of w.stairs) drawStair(ctx, st, G.t);
+    for (const p of w.platforms) drawPlatform(ctx, p, G.t);
+    for (const st of w.stairs) if (st.locked) drawPadlock(ctx, st.x, st.y - 30, 1.1, true);
+    for (const B of w.balances || []) if (B.locked) { const A = w.platforms.find(q => q.id === B.a), C = w.platforms.find(q => q.id === B.b);
+      drawPadlock(ctx, (A.x + A.w / 2 + C.x + C.w / 2) / 2, Math.min(A.y0, C.y0) - B.travel - 150, 1.2, true); }
+    for (const p of w.platforms) if (p.move && p.move.locked && !p.gone) drawPadlock(ctx, p.x + p.w / 2, p.y + 12, 0.75, true, '#f4f0dc');
+    for (const pl of w.plates || []) { const p = w.platforms.find(q => q.id === pl.plat); drawPlate(ctx, p.x + pl.dx, p.y, pl.w, pl.anim); }
+    for (const L of w.levers) { const p = w.platforms.find(q => q.id === L.plat); drawLever(ctx, p.x + L.dx, p.y, L.anim, L); }
+    if (w.mem && !w.memoryTaken) drawMemory(ctx, w.mem.x, w.mem.y, room.memory.id, G.t);
+    // particles (dust)
+    for (const p of G.particles) {
+      const k = 1 - p.t / p.life;
+      ctx.globalAlpha = k; ctx.fillStyle = p.col;
+      if (p.glow) ctx.globalCompositeOperation = 'lighter';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (p.glow ? 1 : 1 + (1 - k)), 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.globalAlpha = 1;
+    // player
+    const P = w.player;
+    if (G.flash > 0) {
+      const r = 40 + (1 - G.flash) * 160;
+      const g = ctx.createRadialGradient(P.x, P.y - 36, 5, P.x, P.y - 36, r);
+      g.addColorStop(0, `rgba(255,250,220,${G.flash})`); g.addColorStop(1, 'rgba(255,250,220,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P.x, P.y - 36, r, 0, 7); ctx.fill();
+    }
+    // ground shadow
+    if (P.state === 'ground') { ctx.fillStyle = 'rgba(30,20,18,.25)'; ctx.beginPath(); ctx.ellipse(P.x + 6, P.y + 2, 18, 4, 0, 0, 7); ctx.fill(); }
+    drawHazop(ctx, P, memCount(), G.t, { angle: G.renderAng, moving: P.walkPhase > 0, air: P.state === 'air' });
+    ctx.restore();
+    vignette(0.42);
+  }
+
+  function drawTouchButtons() {
+    layoutButtons();
+    const held = {}; for (const id in touches) if (touches[id].btn) held[touches[id].btn] = true;
+    ctx.save();
+    for (const k of ['left', 'right', 'jump']) {
+      const b = BTN[k];
+      ctx.fillStyle = held[k] ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.38)';
+      // solid triangles, same size, all sharing one centre line
+      const h = 62, w = 58;
+      ctx.beginPath();
+      if (k === 'left') { ctx.moveTo(b.x - w, b.y); ctx.lineTo(b.x + w * 0.75, b.y - h); ctx.lineTo(b.x + w * 0.75, b.y + h); }
+      else if (k === 'right') { ctx.moveTo(b.x + w, b.y); ctx.lineTo(b.x - w * 0.75, b.y - h); ctx.lineTo(b.x - w * 0.75, b.y + h); }
+      else { ctx.moveTo(b.x, b.y - h); ctx.lineTo(b.x + w * 1.05, b.y + h); ctx.lineTo(b.x - w * 1.05, b.y + h); }   // same top and bottom as the arrows
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawHUD() {
+    if (G.roomLabel > 0) {
+      G.roomLabel -= 1 / 60;
+      ctx.save(); ctx.globalAlpha = Math.min(1, G.roomLabel); ctx.font = `22px ${FONT_TYPE}`; ctx.fillStyle = '#1b1515';
+      ctx.fillText(`${G.roomIdx + 1} / ${ROOMS.length}  ·  ${ROOMS[G.roomIdx].id}`, 40, 60); ctx.restore();
+    }
+    // pause icon (top-right), as in the GDD
+    ctx.save();
+    ctx.fillStyle = 'rgba(27,21,21,.85)';
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.roundRect(VIEW_W - 78, 38 + i * 14, 40, 7, 3); ctx.fill(); }
+    ctx.restore();
+    // control hints (first room, or always if enabled on the very first seconds)
+    const room = G.world.room;
+    const showHints = cfg.hints && room.tutorial && memCount() === 0;
+    const target = showHints && (!G.hasMoved || G.hintTimer < 9) ? 1 : 0;
+    G.hintAlpha += (target - G.hintAlpha) * 0.05;
+    if (G.hintAlpha > 0.01) drawHints(G.hintAlpha);
+  }
+  function arrow(x1, y1, x2, y2, w) {
+    const a = Math.atan2(y2 - y1, x2 - x1), L = Math.hypot(x2 - x1, y2 - y1);
+    ctx.save(); ctx.translate(x1, y1); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(0, -w / 2); ctx.lineTo(L - w * 1.4, -w / 2); ctx.lineTo(L - w * 1.4, -w * 1.3); ctx.lineTo(L, 0); ctx.lineTo(L - w * 1.4, w * 1.3); ctx.lineTo(L - w * 1.4, w / 2); ctx.lineTo(0, w / 2); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill(); ctx.strokeStyle = '#1b1515'; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  }
+  function drawHints(a) {
+    ctx.save(); ctx.globalAlpha = a;
+    if (isTouch) {
+      // touch hints removed: the mobile control scheme is still to be designed
+    } else {
+      ctx.font = `24px ${FONT_TYPE}`; ctx.textAlign = 'center';
+      const txt = T().keysHint, w = ctx.measureText(txt).width + 60;
+      ctx.fillStyle = 'rgba(245,240,225,.85)'; ctx.fillRect(VIEW_W / 2 - w / 2, 840, w, 44);
+      ctx.fillStyle = '#1b1515'; ctx.fillText(txt, VIEW_W / 2, 870);
+    }
+    ctx.restore();
+  }
+  function drawRotateHint() {
+    dim(0.9);
+    ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#fbf8ea'; ctx.font = `60px ${FONT_TYPE}`; ctx.fillText('⟳', VIEW_W / 2, 420);
+    ctx.font = `italic 40px ${FONT_THINK}`; ctx.fillText('↔', VIEW_W / 2, 500); ctx.restore();
+  }
+
+  // ---------------- loop ----------------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  Audio.setVolumes(cfg.music, cfg.sfx);
+  fadeTo(0, null, 0.8);
+  requestAnimationFrame(frame);
+
+  // Self-update: an installed (home-screen) copy can keep serving an old cached page.
+  // On start, and whenever the app comes back to the foreground, ask the server for the
+  // current index.html bypassing the cache; if its version differs, reload onto it.
+  function checkForUpdate() {
+    if (typeof GAME_VERSION === 'undefined' || !/^https?:/.test(location.protocol) || !window.fetch) return;
+    if (G.state === 'play' && G.world) return;          // never interrupt a room in progress
+    fetch(location.pathname, { cache: 'reload' }).then(r => r.ok ? r.text() : '').then(html => {
+      const m = /<meta name="version" content="([^"]+)"/.exec(html);
+      if (!m || m[1] === GAME_VERSION) return;
+      let tried = null; try { tried = sessionStorage.getItem('stairways_upd'); } catch (e) { }
+      if (tried === m[1]) return;                        // already tried this one: avoid a reload loop
+      try { sessionStorage.setItem('stairways_upd', m[1]); save(); } catch (e) { }
+      location.reload();
+    }).catch(() => { });
+  }
+  setTimeout(checkForUpdate, 1500);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+
+  // debug / test API
+  window.__stairways = { G, loadRoom, startNewGame, continueGame, ROOMS, startFinale: () => startFinale(), setState: s => { G.state = s; } };
+})();
+
+</script>
+</body>
+</html>
