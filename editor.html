@@ -1,9 +1,17 @@
 <!doctype html>
+<<<<<<< HEAD
 <!-- Stairways v0.47 — built 2026-11-06 18:50 UTC -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="version" content="0.47">
+=======
+<!-- Stairways v0.46 — built 2026-11-06 18:30 UTC -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="version" content="0.46">
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1515">
@@ -23,7 +31,11 @@
 <canvas id="game" aria-label="Stairways"></canvas>
 <script>
 'use strict';
+<<<<<<< HEAD
 const GAME_VERSION = '0.47';
+=======
+const GAME_VERSION = '0.46';
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
 const STAIRWAYS_EDITOR = true;
 
 // ---- i18n.js ----
@@ -898,7 +910,11 @@ function createWorld(room, opts) {
         u: m.u0 || 0, target: m.u0 || 0, active: !!m.active, dir: 1, pause: m.pause || 0, wait: 0,
       } : null,
       kind: p.kind || 'slab',
+<<<<<<< HEAD
       crumble: !!p.crumble, crumbleTime: p.crumbleTime || 0, ctime: 0, touched: false, shake: 0, gone: false, fallY: 0,
+=======
+      crumble: !!p.crumble, touched: false, shake: 0, gone: false, fallY: 0,
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
       balD: p.balance || room.platforms.some(q => q.balance && q.balance.with === p.id) ? 0 : null,
     });
   }
@@ -1090,10 +1106,14 @@ function stepWorld(w, input, dt) {
     if (!p.crumble || p.gone) continue;
     const onIt = P.state === 'ground' && P.plat === p.id;
     if (onIt) p.touched = true;
+<<<<<<< HEAD
     if (p.touched && p.crumbleTime && p.shake === 0) {          // timed: it goes even if Hazop stays on it
       p.ctime = (p.ctime || 0) + dt;
       if (p.ctime >= p.crumbleTime) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
     } else if (!onIt && p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+=======
+    else if (p.touched && p.shake === 0) { p.shake = 0.0001; ev.push({ type: 'crumble', x: p.x + p.w / 2, y: p.y }); }
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
     if (p.shake > 0) { p.shake += dt; if (p.shake > 0.45) { p.gone = true; ev.push({ type: 'crumbled', x: p.x + p.w / 2, y: p.y }); } }
   }
   // --- crates: gravity, resting, carried by movers ---
@@ -1771,9 +1791,13 @@ function drawPlatform(ctx, p, t) {
 }
 
 function drawCrumbling(ctx, p, t) {
+<<<<<<< HEAD
   // timed slabs tremble more and more while the time runs out
   const pre = p.crumbleTime && p.touched && p.shake === 0 ? Math.min(1, (p.ctime || 0) / p.crumbleTime) : 0;
   const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : pre > 0 ? Math.sin(t * 70) * 1.6 * pre : 0;
+=======
+  const sh = p.shake > 0 ? Math.sin(t * 90) * 2.5 : 0;
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
   ctx.save(); ctx.translate(sh, p.shake > 0 ? p.shake * 6 : 0);
   ctx.fillStyle = 'rgba(40,25,20,.15)'; ctx.fillRect(p.x + 10, p.y + 12, p.w, p.h);
   ctx.fillStyle = '#3a2f2b'; ctx.fillRect(p.x, p.y, p.w, p.h);
@@ -1783,11 +1807,14 @@ function drawCrumbling(ctx, p, t) {
   ctx.moveTo(p.x + 6, p.y + p.h * 0.5); ctx.lineTo(p.x + 20, p.y + p.h * 0.45);
   ctx.stroke();
   ctx.fillStyle = '#5a4c44'; ctx.fillRect(p.x, p.y, p.w, 3);
+<<<<<<< HEAD
   if (p.crumbleTime) {   // a small hourglass marks the timed ones
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
     ctx.fillStyle = '#e8dcc0'; ctx.beginPath();
     ctx.moveTo(cx - 5, cy - 7); ctx.lineTo(cx + 5, cy - 7); ctx.lineTo(cx, cy); ctx.lineTo(cx + 5, cy + 7); ctx.lineTo(cx - 5, cy + 7); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
   }
+=======
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
   ctx.restore();
 }
 
@@ -3432,7 +3459,10 @@ const Audio = (() => {
     ['move', 'Piattaforma mobile', 'va avanti e indietro con una leva'],
     ['loop', 'Piattaforma continua', 'si muove sempre'],
     ['crumble', 'Piattaforma che crolla', 'regge un passaggio'],
+<<<<<<< HEAD
     ['crumbleT', 'Crolla a tempo', 'cade qualche secondo dopo che ci sali'],
+=======
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
     ['trap', 'Botola', 'sparisce con una leva'],
     ['chain', 'Piattaforme a catena', 'contrappeso'],
     ['stair', 'Scala ferma', ''],
@@ -3457,7 +3487,10 @@ const Audio = (() => {
       case 'move': o = P({ x: x - 100, y, w: 200, move: { dx: 300, dy: 0, speed: 160 } }); break;
       case 'loop': o = P({ x: x - 100, y, w: 200, move: { dx: 0, dy: -250, speed: 120, mode: 'loop', active: true, pause: 0.8 } }); break;
       case 'crumble': o = P({ x: x - 100, y, w: 200, crumble: true }); break;
+<<<<<<< HEAD
       case 'crumbleT': o = P({ x: x - 100, y, w: 200, crumble: true, crumbleTime: 1.5 }); break;
+=======
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
       case 'trap': o = P({ x: x - 60, y, w: 120, move: { dx: 0, dy: 700, speed: 1400 } }); break;
       case 'chain': {
         const b = { id: freeId('p'), x: x + 260, y, w: 180 }; doc.platforms.push(b);
@@ -3804,6 +3837,7 @@ const Audio = (() => {
       if (sel.kind === 'plat') {
         const inChainB = doc.platforms.find(q => q.balance && q.balance.with === o.id);
         panel.append(field('Larghezza', num(o, 'w', { min: 20 })), field('Spessore', num(o, 'h', { def: 26, min: 20 })));
+<<<<<<< HEAD
         if (!o.move && !o.balance && !inChainB) {
           panel.append(field('Crolla', chk(o, 'crumble', v => { if (!v) delete o.crumbleTime; })));
           if (o.crumble) {
@@ -3811,6 +3845,9 @@ const Audio = (() => {
             panel.append(el('small', { textContent: '0 = crolla quando scendi. Un numero = crolla quei secondi dopo che ci sei salito, anche se ci resti sopra.' }));
           }
         }
+=======
+        if (!o.move && !o.balance && !inChainB) panel.append(field('Crolla al passaggio', chk(o, 'crumble')));
+>>>>>>> 5ae9d33d439e51fb4b9e1e4b929c9667fe552edf
         if (o.move) {
           panel.append(field('Movimento', choice(o.move, 'mode', [['toggle', 'con leva/pedana'], ['loop', 'continuo']], v => { if (v === 'loop') o.move.active = true; else delete o.move.active; })));
           panel.append(field('Spostamento X', num(o.move, 'dx')), field('Spostamento Y', num(o.move, 'dy')), field('Velocità', num(o.move, 'speed', { def: 120, min: 20 })));
